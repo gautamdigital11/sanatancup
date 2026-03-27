@@ -1,0 +1,127 @@
+/**
+ * HPL 2026 - Official Auction Script
+ * Fixed: Column C for PARSH, Live Balance, & null check
+ * Powered by: Gautam Digital
+ */
+
+function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var action = e.parameter.action;
+
+  // --- 1. PLAYERS DATA ACTION ---
+  if (action == "players") {
+    var pSheet = ss.getSheetByName("player");
+    var sSheet = ss.getSheetByName("sold");
+    
+    if (!pSheet || !sSheet) return returnJson({error: "Sheet Names Not Found"});
+
+    var pData = pSheet.getDataRange().getValues();
+    var sData = sSheet.getLastRow() > 1 ? sSheet.getDataRange().getValues() : [];
+    
+    var players = [];
+    for (var i = 1; i < pData.length; i++) {
+      var pName = pData[i][2]; // Column C: Player Name
+      if (!pName) continue;
+
+      var statusInfo = sData.find(function(row) {
+        return row[0].toString().trim().toLowerCase() === pName.toString().trim().toLowerCase();
+      });
+
+      players.push({
+        name: pName,
+        mobile: pData[i][3], // Column D
+        address: pData[i][4], // Column E
+        type: pData[i][5],    // Column F
+        photo: pData[i][6],   // Column G
+        team: statusInfo ? statusInfo[1] : "", 
+        price: statusInfo ? statusInfo[2] : 0, 
+        status: statusInfo ? statusInfo[3] : "AVAILABLE"
+      });
+    }
+    return returnJson(players);
+  }
+
+  // --- 2. TEAMS DATA ACTION (Fixing Purse & Balance) ---
+  if (action == "teams") {
+    var tSheet = ss.getSheetByName("team");
+    var sSheet = ss.getSheetByName("sold");
+    
+    if (!tSheet || !sSheet) return returnJson({error: "Sheets Not Found"});
+
+    var tData = tSheet.getDataRange().getValues();
+    var sData = sSheet.getLastRow() > 1 ? sSheet.getDataRange().getValues() : [];
+    
+    var teams = [];
+    for (var i = 1; i < tData.length; i++) {
+      var teamName = tData[i][1]; // Column B: Team Name
+      if (!teamName) continue;
+
+      // --- FIXED: Column C is index [2] ---
+      var rawPurse = tData[i][2]; 
+      var initialPurse = parseFloat(rawPurse) || 0; 
+      
+      // Calculate Live Spent
+      var spent = 0;
+      if (sData.length > 0) {
+        spent = sData.filter(function(r) {
+          return r[1] && r[1].toString().trim() === teamName.toString().trim() && r[3] === "SOLD";
+        }).reduce(function(sum, r) {
+          return sum + (parseFloat(r[2]) || 0);
+        }, 0);
+      }
+
+      teams.push({
+        name: teamName,
+        purse: initialPurse,      
+        spent: spent,             
+        balance: initialPurse - spent 
+      });
+    }
+    return returnJson(teams);
+  }
+  
+  return ContentService.createTextOutput("Invalid Action").setMimeType(ContentService.MimeType.TEXT);
+}
+
+// 3. DATA SAVE/UNDO/RESET (POST REQUEST)
+function doPost(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sSheet = ss.getSheetByName("sold");
+  var data;
+  
+  try {
+    data = JSON.parse(e.postData.contents);
+  } catch(err) {
+    return ContentService.createTextOutput("Error: Invalid JSON");
+  }
+
+  if (data.action === "RESET_UNSOLD") {
+    var rows = sSheet.getDataRange().getValues();
+    for (var i = rows.length - 1; i >= 1; i--) {
+      if (rows[i][3] === "UNSOLD") sSheet.deleteRow(i + 1);
+    }
+    return ContentService.createTextOutput("Reset Successful");
+  }
+
+  if (data.action === "UNDO") {
+    var lastRow = sSheet.getLastRow();
+    if (lastRow > 1) sSheet.deleteRow(lastRow);
+    return ContentService.createTextOutput("Undo Successful");
+  }
+
+  if (data.player) {
+    sSheet.appendRow([
+      data.player,   // Col A
+      data.team,     // Col B
+      data.price,    // Col C
+      data.status,   // Col D
+      new Date()     // Col E
+    ]);
+    return ContentService.createTextOutput("Saved Successful");
+  }
+}
+
+function returnJson(data) {
+  return ContentService.createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPL Analytics Dashboard - Gautam Digital</title>
+    <style>
+        :root { 
+            --primary: #0b132b; 
+            --accent: #00a8ff; 
+            --success: #27ae60; 
+            --danger: #e74c3c; 
+            --warning: #f39c12; 
+            --bg: #f4f7f6; 
+        }
+        
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #333; }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #ddd; padding-bottom: 10px; }
+        .header h1 { margin: 0; font-size: 32px; text-transform: uppercase; color: var(--primary); letter-spacing: 1px; }
+
+        .analytics-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+            gap: 15px; 
+            margin-bottom: 40px; 
+        }
+        
+        .ana-card { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 12px; 
+            text-align: center; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); 
+            border-bottom: 5px solid #ddd; 
+            transition: transform 0.2s;
+        }
+        .ana-card:hover { transform: translateY(-5px); }
+        .ana-card h3 { margin: 0; font-size: 13px; color: #666; text-transform: uppercase; }
+        .ana-card .val { font-size: 32px; font-weight: bold; color: var(--primary); margin: 10px 0; }
+        
+        .ana-btn { 
+            width: 100%; color: white; border: none; padding: 10px; 
+            border-radius: 6px; cursor: pointer; font-weight: bold; 
+            text-transform: uppercase; font-size: 11px; transition: 0.3s;
+        }
+        .ana-btn:hover { opacity: 0.8; }
+
+        .section-title { margin: 30px 0 20px; font-size: 24px; color: var(--primary); }
+        .teams-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+            gap: 20px; 
+        }
+        
+        .team-card { 
+            background: white; 
+            border-radius: 12px; 
+            padding: 20px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+            border-top: 6px solid var(--primary); 
+        }
+        .team-card h3 { margin: 0 0 15px 0; font-size: 19px; color: var(--primary); border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        
+        .purse-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 15px; }
+        .purse-row b { font-weight: bold; }
+
+        .view-list-btn { 
+            width: 100%; background: var(--primary); color: white; border: none; 
+            padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; 
+            margin-top: 15px; transition: 0.3s;
+        }
+        .view-list-btn:hover { background: var(--accent); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>📊 UPL AUCTION ANALYTICS</h1>
+    </div>
+
+    <div class="analytics-grid">
+        <div class="ana-card" style="border-bottom-color: var(--accent)">
+            <h3>Total Players</h3>
+            <div class="val" id="totalCount">0</div>
+            <button class="ana-btn" style="background: var(--accent)" onclick="openPage('TOTAL')">View All List</button>
+        </div>
+        <div class="ana-card" style="border-bottom-color: var(--warning)">
+            <h3>Sold Players</h3>
+            <div class="val" id="soldCount" style="color: var(--warning)">0</div>
+            <button class="ana-btn" style="background: var(--warning)" onclick="openPage('SOLD_ALL')">View Sold List</button>
+        </div>
+        <div class="ana-card" style="border-bottom-color: var(--danger)">
+            <h3>Unsold Players</h3>
+            <div class="val" id="unsoldCount" style="color: var(--danger)">0</div>
+            <button class="ana-btn" style="background: var(--danger)" onclick="openPage('UNSOLD')">View Unsold List</button>
+        </div>
+        <div class="ana-card" style="border-bottom-color: var(--success)">
+            <h3>Available</h3>
+            <div class="val" id="pendingCount" style="color: var(--success)">0</div>
+            <button class="ana-btn" style="background: var(--success)" onclick="openPage('PENDING')">View Available</button>
+        </div>
+    </div>
+
+    <h2 class="section-title">👥 Team Squads</h2>
+    <div id="teamSquads" class="teams-grid">
+        <p style="text-align:center; grid-column: 1/-1;">Syncing Live Auction Data...</p>
+    </div>
+
+    <script>
+        // UPDATED MASTER API LINK
+        const mainAPI = "https://script.google.com/macros/s/AKfycbx4OBlVp-XgSXJdt4S04PAJII4bJhxYnCU6_9O3QFdr75_0XnYmw4JG3XDQbE0S32jQ1w/exec";
+
+        function openPage(type) {
+            window.open("list.html?type=" + type, '_blank');
+        }
+
+        function openTeamPage(name) {
+            window.open("list.html?type=TEAM&name=" + encodeURIComponent(name), '_blank');
+        }
+
+        async function updateDashboard() {
+            try {
+                const timestamp = new Date().getTime();
+                // Fetching both Players and Teams from the single API
+                const [pRes, tRes] = await Promise.all([
+                    fetch(mainAPI + "?action=players&t=" + timestamp).then(r => r.json()),
+                    fetch(mainAPI + "?action=teams&t=" + timestamp).then(r => r.json())
+                ]);
+
+                // 1. Stats Calculation
+                const soldOnly = pRes.filter(p => p.status === "SOLD");
+                const unsoldOnly = pRes.filter(p => p.status === "UNSOLD");
+                const availableOnly = pRes.filter(p => !p.status || p.status === "AVAILABLE" || p.status === "");
+
+                document.getElementById("totalCount").innerText = pRes.length;
+                document.getElementById("soldCount").innerText = soldOnly.length;
+                document.getElementById("unsoldCount").innerText = unsoldOnly.length;
+                document.getElementById("pendingCount").innerText = availableOnly.length;
+
+                // 2. Team Cards Logic
+                const squadsDiv = document.getElementById("teamSquads");
+                squadsDiv.innerHTML = "";
+                
+                tRes.forEach((t, i) => {
+                    // Match sold players with team name from the single pRes data
+                    const teamSold = soldOnly.filter(p => p.team && p.team.trim() === t.name.trim());
+                    
+                    const spent = teamSold.reduce((sum, p) => sum + (parseInt(p.price) || 0), 0);
+                    const totalPurse = parseInt(t.purse) || 0;
+                    const balance = totalPurse - spent;
+
+                    squadsDiv.innerHTML += `
+                        <div class="team-card">
+                            <h3>${i + 1}. ${t.name}</h3>
+                            <div class="purse-row"><span>Total Purse:</span><b>₹${totalPurse.toLocaleString('en-IN')}</b></div>
+                            <div class="purse-row" style="color:var(--danger)"><span>Spent:</span><b>₹${spent.toLocaleString('en-IN')}</b></div>
+                            <div class="purse-row" style="color:var(--success)"><span>Balance:</span><b>₹${balance.toLocaleString('en-IN')}</b></div>
+                            <div class="purse-row"><span>Players Bought:</span><b>${teamSold.length}</b></div>
+                            <button class="view-list-btn" onclick="openTeamPage('${t.name.replace(/'/g, "\\'")}')">View Team Squad</button>
+                        </div>`;
+                });
+
+            } catch (e) {
+                console.error("Dashboard Sync Error:", e);
+                document.getElementById("teamSquads").innerHTML = "<p style='color:red; text-align:center; grid-column:1/-1;'>API Connection Error. Please check Deployment.</p>";
+            }
+        }
+
+        // Initial Load
+        updateDashboard();
+        // Auto-refresh every 12 seconds
+        setInterval(updateDashboard, 12000);
+    </script>
+</body>
+</html>

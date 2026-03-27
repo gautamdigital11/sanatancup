@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auction Control Room - Gautam Digital</title>
+    
+    <script>
+        if (sessionStorage.getItem("hpl_auth") !== "true") {
+            // Agar logged in nahi hai, toh login page par fek do
+            window.location.href = "login.html";
+        }
+    </script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #1e3799; --success: #27ae60; --danger: #c0392b; --warning: #f1c40f; --info: #3498db; --dark: #0b132b; }
+        body { font-family: 'Poppins', sans-serif; background: #f1f5f9; margin: 0; padding: 20px; color: #333; }
+        
+        /* Navigation Bar */
+        .nav-bar { max-width: 1100px; margin: 0 auto 20px auto; display: flex; justify-content: space-between; align-items: center; }
+        .back-btn { text-decoration: none; color: var(--primary); font-weight: bold; font-size: 14px; background: white; padding: 8px 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+
+        .auction-card { background: white; max-width: 500px; margin: auto; padding: 30px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); border-top: 8px solid var(--primary); text-align: center; position: relative; }
+        
+        #playerPhoto { width: 160px; height: 160px; border-radius: 50%; border: 5px solid var(--primary); object-fit: cover; margin-bottom: 10px; background: #eee; }
+        
+        .controls { display: flex; flex-direction: column; gap: 15px; margin-top: 25px; }
+        input, select { padding: 14px; border-radius: 10px; border: 2px solid #ddd; font-size: 16px; width: 100%; box-sizing: border-box; outline: none; }
+        
+        .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        button { padding: 14px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; font-size: 16px; transition: 0.3s; text-transform: uppercase; }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        .sold { background: var(--success); color: white; }
+        .unsold { background: var(--danger); color: white; }
+        
+        .utility-btns { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .undo { background: #e2e8f0; color: #475569; font-size: 13px; }
+        .reset { background: #fee2e2; color: #991b1b; font-size: 13px; }
+
+        .teams-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; max-width: 1100px; margin: 40px auto; }
+        .team-box { background: white; padding: 18px; border-radius: 15px; border-left: 6px solid var(--primary); box-shadow: 0 5px 15px rgba(0,0,0,0.05); text-align: left; }
+        
+        .purse-info { color: var(--danger); font-weight: 800; font-size: 18px; display: block; margin-top: 5px; }
+        .limit-tag { background: #e0f2fe; color: #0369a1; font-size: 12px; padding: 3px 8px; border-radius: 5px; font-weight: bold; display: inline-block; }
+        .initial-val { font-size: 11px; color: #64748b; display: block; margin-top: 8px; border-top: 1px solid #f1f5f9; padding-top: 5px; }
+        
+        .sync-msg { font-size: 14px; color: var(--primary); font-weight: bold; margin: 10px 0; display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="nav-bar">
+        <a href="index.html" class="back-btn">⬅️ Back to Portal</a>
+        <div style="font-weight: bold; color: var(--primary);"> CONTROL ROOM</div>
+    </div>
+    
+    <div class="auction-card">
+        <div id="syncStatus" class="sync-msg">Updating Google Sheet...</div>
+        <img id="playerPhoto" src="https://via.placeholder.com/180" alt="Player">
+        <h2 id="playerName">Loading...</h2>
+        <p id="playerType">Fetching data</p>
+        
+        <div id="liveLimit" style="color:var(--danger); font-weight:800; font-size: 14px; min-height: 20px;"></div>
+        
+        <div class="controls">
+            <input type="number" id="price" placeholder="Enter Sold Price (₹)">
+            <select id="teamSelect" onchange="updateLimitUI()">
+                <option value="">-- Choose Team --</option>
+            </select>
+            
+            <div class="btn-row">
+                <button class="sold" onclick="process('SOLD')">🔨 SOLD</button>
+                <button class="unsold" onclick="process('UNSOLD')">❌ UNSOLD</button>
+            </div>
+            
+            <div class="utility-btns">
+                <button class="undo" onclick="process('UNDO')">↩️ Undo</button>
+                <button class="reset" onclick="confirmReset()">🔄 Reset Unsold</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="teamsDisplay" class="teams-grid"></div>
+
+<script>
+    // --- GOOGLE SCRIPT API ---
+    const mainAPI = "https://script.google.com/macros/s/AKfycbx4OBlVp-XgSXJdt4S04PAJII4bJhxYnCU6_9O3QFdr75_0XnYmw4JG3XDQbE0S32jQ1w/exec";
+    
+    let players = [];
+    let teams = [];
+    let currentLimit = 0;
+
+    async function init() {
+        try {
+            const t = new Date().getTime();
+            const [pRes, tRes] = await Promise.all([
+                fetch(mainAPI + "?action=players&t=" + t).then(r => r.json()),
+                fetch(mainAPI + "?action=teams&t=" + t).then(r => r.json())
+            ]);
+
+            players = pRes.filter(p => !p.team || p.team.trim() === "" || p.status === "AVAILABLE");
+            
+            teams = tRes.map(t => {
+                const sheetPurse = parseFloat(t.purse) || 0; 
+                const squad = pRes.filter(p => p.team && p.team.trim() === t.name.trim() && p.status === "SOLD");
+                const spent = squad.reduce((sum, p) => sum + (parseFloat(p.price) || 0), 0);
+                const balance = sheetPurse - spent;
+                let maxBid = (squad.length < 13) ? (balance - ((13 - squad.length - 1) * 500)) : balance;
+                
+                return { name: t.name, sheetPurse, balance, squadCount: squad.length, maxBid: maxBid < 0 ? 0 : maxBid };
+            });
+
+            renderUI();
+        } catch (e) {
+            document.getElementById("playerName").innerText = "API Sync Error!";
+        }
+    }
+
+    function renderUI() {
+        const select = document.getElementById("teamSelect");
+        const display = document.getElementById("teamsDisplay");
+        select.innerHTML = '<option value="">-- Choose Team --</option>';
+        display.innerHTML = "";
+
+        teams.forEach(t => {
+            select.add(new Option(t.name, t.name));
+            display.innerHTML += `
+                <div class="team-box">
+                    <div style="font-weight: 800;">${t.name}</div>
+                    <span class="limit-tag">Limit: ₹${t.maxBid.toLocaleString()}</span>
+                    <span class="purse-info">₹${t.balance.toLocaleString()}</span>
+                    <span class="initial-val">Squad: ${t.squadCount}/13</span>
+                </div>`;
+        });
+
+        if (players.length > 0) {
+            const p = players[0];
+            document.getElementById("playerName").innerText = p.name.toUpperCase();
+            document.getElementById("playerType").innerText = (p.type || "PLAYER") + " | " + (p.address || "Local");
+            document.getElementById("playerPhoto").src = getPhoto(p.photo);
+        } else {
+            document.getElementById("playerName").innerText = "FINISH";
+            document.querySelectorAll("button, input").forEach(el => el.disabled = true);
+        }
+    }
+
+    function updateLimitUI() {
+        const val = document.getElementById("teamSelect").value;
+        const t = teams.find(team => team.name === val);
+        currentLimit = t ? t.maxBid : 0;
+        document.getElementById("liveLimit").innerText = t ? "Limit: ₹" + t.maxBid.toLocaleString() : "";
+    }
+
+    function getPhoto(link) {
+        if (!link) return "https://via.placeholder.com/180";
+        let id = link.includes("id=") ? link.split("id=")[1].split("&")[0] : link.includes("/d/") ? link.split("/d/")[1].split("/")[0] : "";
+        return id ? "https://lh3.googleusercontent.com/d/" + id : link;
+    }
+
+    function confirmReset() {
+        if(confirm("Reset UNSOLD players?")) process('RESET_UNSOLD');
+    }
+
+    async function process(type) {
+        const team = document.getElementById("teamSelect").value;
+        const price = document.getElementById("price").value;
+        const player = players[0]?.name;
+
+        if (type === 'SOLD') {
+            if (!team || !price) { alert("Team aur Price zaruri hai!"); return; }
+            if (parseFloat(price) > currentLimit) { alert("Budget Limit Cross!"); return; }
+        }
+
+        document.querySelectorAll("button").forEach(b => b.disabled = true);
+        document.getElementById("syncStatus").style.display = "block";
+        
+        try {
+            await fetch(mainAPI, { 
+                method: "POST", 
+                body: JSON.stringify({ action: type, player, team: type==='SOLD'?team:(type==='UNSOLD'?'NONE':''), price: price||0, status: type }) 
+            });
+            location.reload(); 
+        } catch (e) { 
+            alert("Network Error!"); 
+            document.querySelectorAll("button").forEach(b => b.disabled = false);
+        }
+    }
+
+    init();
+</script>
+</body>
+</html>

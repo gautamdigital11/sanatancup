@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AUCTION Portal - Gautam Digital</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        if (sessionStorage.getItem("hpl_auth") !== "true") {
+            window.location.href = "login.html";
+        }
+    </script>
+
+    <style>
+        :root { 
+            --primary: #0b132b; 
+            --accent: #00a8ff; 
+            --success: #00d084;
+            --danger: #ff4757;
+            --bg: #f4f7f9; 
+            --card-bg: #ffffff;
+        }
+        
+        body { 
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; 
+            background: var(--bg); 
+            margin: 0; 
+            padding: 15px;
+            color: var(--primary);
+            text-align: center;
+        }
+
+        .header { 
+            margin: 30px 0; 
+            padding: 20px;
+        }
+        .header h1 { 
+            font-size: clamp(1.8rem, 5vw, 2.8rem); 
+            margin: 0; 
+            letter-spacing: 1px;
+            color: var(--primary);
+            font-weight: 900;
+        }
+        .header p { 
+            color: var(--accent); 
+            font-weight: 700; 
+            margin-top: 5px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 0.9rem;
+        }
+
+        /* Responsive Grid */
+        .admin-links { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); 
+            gap: 15px; 
+            max-width: 1200px; 
+            margin: 0 auto;
+            padding: 10px;
+        }
+
+        /* Card Design */
+        .link-card { 
+            background: var(--card-bg); 
+            padding: 25px 15px; 
+            border-radius: 16px; 
+            text-decoration: none; 
+            color: inherit; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            border: 1px solid rgba(0,0,0,0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .link-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            border-color: var(--accent);
+        }
+
+        /* Icon Styling */
+        .icon-box { 
+            font-size: 32px; 
+            margin-bottom: 12px; 
+            color: var(--primary);
+            background: #f0f4f8;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        .link-card:hover .icon-box {
+            background: var(--accent);
+            color: white;
+        }
+
+        .link-card h2 { 
+            margin: 0 0 5px 0; 
+            font-size: 16px; 
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .link-card p { 
+            font-size: 12px; 
+            color: #64748b; 
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        /* Specific Colors */
+        .card-control { border-bottom: 4px solid var(--accent); }
+        .card-viewers { border-bottom: 4px solid #f39c12; }
+        .card-overlay { border-bottom: 4px solid var(--success); }
+
+        /* Logout Button */
+        .logout-container { margin: 40px 0; }
+        .logout-btn {
+            padding: 14px 45px;
+            background: #1e293b;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 15px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: 0.3s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .logout-btn:hover { 
+            background: var(--danger); 
+            transform: scale(1.05);
+        }
+
+        /* Desktop View Adjustments */
+        @media (min-width: 768px) {
+            .admin-links {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 25px;
+            }
+            .link-card { padding: 40px 20px; }
+            .icon-box { font-size: 40px; width: 80px; height: 80px; }
+            .link-card h2 { font-size: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🏏 GDA 2026</h1>
+        <p>Gautam Digital Auction System</p>
+    </div>
+
+    <div class="admin-links">
+        
+        <a href="auction.html" class="link-card card-control">
+            <div class="icon-box"><i class="fas fa-gavel"></i></div>
+            <h2>Auction Control</h2>
+            <p>Live bidding & sold panel</p>
+        </a>
+
+        <a href="dashboard.html" class="link-card">
+            <div class="icon-box"><i class="fas fa-chart-line"></i></div>
+            <h2>Analytics</h2>
+            <p>Reports & Statistics</p>
+        </a>
+
+        <a href="player.html" class="link-card">
+            <div class="icon-box"><i class="fas fa-users-rectangle"></i></div>
+            <h2>Player List</h2>
+            <p>Database management</p>
+        </a>
+
+        <a href="viewers.html" class="link-card card-viewers">
+            <div class="icon-box"><i class="fas fa-user-tie"></i></div>
+            <h2>Owners & Viewers</h2>
+            <p>Live squads & balance</p>
+        </a>
+
+        <a href="display.html" class="link-card">
+            <div class="icon-box"><i class="fas fa-tv"></i></div>
+            <h2>LED Display</h2>
+            <p>Ground display screen</p>
+        </a>
+
+        <a href="overlay.html" class="link-card card-overlay">
+            <div class="icon-box"><i class="fas fa-video"></i></div>
+            <h2>Live Overlay</h2>
+            <p>OBS & YouTube Graphics</p>
+        </a>
+        
+        <a href="mobile.html" class="link-card">
+            <div class="icon-box"><i class="fas fa-mobile-alt"></i></div>
+            <h2>Mobile View</h2>
+            <p>Responsive interface</p>
+        </a>
+
+    </div>
+
+    <div class="logout-container">
+        <button class="logout-btn" onclick="logout()">
+            <i class="fas fa-sign-out-alt"></i> LOGOUT SYSTEM
+        </button>
+    </div>
+
+    <script>
+        function logout() {
+            if(confirm("Kya aap sach me Logout karna chahte hain?")) {
+                sessionStorage.removeItem("hpl_auth");
+                window.location.href = "login.html";
+            }
+        }
+    </script>
+
+</body>
+</html>

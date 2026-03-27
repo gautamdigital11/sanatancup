@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPL 2026 - Live Team Squads</title>
+    <style>
+        :root { --primary: #0b132b; --accent: #00a8ff; --success: #27ae60; --bg: #f1f5f9; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); margin: 0; padding: 15px; }
+        .container { max-width: 800px; margin: auto; }
+        
+        .header { text-align: center; background: var(--primary); color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+        .header h1 { margin: 0; font-size: 24px; text-transform: uppercase; }
+
+        .team-card { background: white; border-radius: 12px; margin-bottom: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
+        
+        .team-info { padding: 15px; display: grid; grid-template-columns: 1fr auto; cursor: pointer; transition: 0.3s; }
+        .team-info:hover { background: #f8fafc; }
+        
+        .team-name { font-size: 18px; font-weight: 800; color: var(--primary); text-transform: uppercase; }
+        .purse-box { text-align: right; }
+        .balance { color: var(--success); font-weight: bold; font-size: 16px; display: block; }
+        .stats { font-size: 11px; color: #64748b; font-weight: bold; }
+
+        .player-list { display: none; padding: 0 15px 15px; border-top: 1px solid #f1f5f9; background: #fafafa; }
+        .player-list.active { display: block; animation: slideDown 0.3s ease-out; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 14px; }
+        th { text-align: left; color: #94a3b8; padding: 8px; font-size: 11px; text-transform: uppercase; }
+        td { padding: 10px 8px; border-bottom: 1px solid #eee; }
+        .sno { color: var(--accent); font-weight: bold; width: 30px; }
+        
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .btn-view { background: var(--primary); color: white; border: none; padding: 5px 15px; border-radius: 5px; font-size: 12px; margin-top: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>🏏 SANATAN CUP SQUADS 🏏</h1>
+            <p style="margin:5px 0 0; font-size: 12px; opacity: 0.8;">Live Team Balance & Player List</p>
+        </div>
+
+        <div id="teamsContainer">
+            <p style="text-align:center; padding:20px;">Fetching live data from sheets...</p>
+        </div>
+    </div>
+
+<script>
+    // Aapki Main API URL
+        const mainAPI = "https://script.google.com/macros/s/AKfycbx4OBlVp-XgSXJdt4S04PAJII4bJhxYnCU6_9O3QFdr75_0XnYmw4JG3XDQbE0S32jQ1w/exec";
+
+    async function loadViewerData() {
+        try {
+            const t = new Date().getTime();
+            // action=teams se team list aayegi, action=players se sold players list aayegi (Logic update ke baad)
+            const [tRes, sRes] = await Promise.all([
+                fetch(mainAPI + "?action=teams&t=" + t),
+                fetch(mainAPI + "?action=players&t=" + t) 
+            ]);
+            
+            const teams = await tRes.json();
+            const allPlayers = await sRes.json(); 
+
+            // Note: Gallery mein aap players dikha rahe hain, Squad mein hum wahi players 
+            // filter karenge jinke paas Team name aur SOLD status hoga.
+            
+            const container = document.getElementById("teamsContainer");
+            container.innerHTML = "";
+
+            teams.forEach((team, index) => {
+                // Yahan hum dekhenge ki is team ne kitne player khareede
+                // Hum 'team' property check kar rahe hain jo 'sold' sheet se aati hai
+                const mySold = allPlayers.filter(p => p.team && p.team.trim() === team.name.trim());
+                
+                const spent = mySold.reduce((sum, p) => sum + (parseInt(p.price) || 0), 0);
+                const balance = (parseInt(team.purse) || 0) - spent;
+
+                const card = document.createElement("div");
+                card.className = "team-card";
+                card.innerHTML = `
+                    <div class="team-info" onclick="toggleList(${index})">
+                        <div>
+                            <div class="team-name">${team.name}</div>
+                            <button class="btn-view" id="btn-${index}">View Squad ↓</button>
+                        </div>
+                        <div class="purse-box">
+                            <span class="balance">₹${balance.toLocaleString()}</span>
+                            <span class="stats">Players: ${mySold.length} | Spent: ₹${spent.toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <div class="player-list" id="list-${index}">
+                        <table>
+                            <thead>
+                                <tr><th>#</th><th>Khiladi Name</th><th style="text-align:right;">Price</th></tr>
+                            </thead>
+                            <tbody>
+                                ${mySold.map((p, i) => `
+                                    <tr>
+                                        <td class="sno">${i + 1}</td>
+                                        <td><b>${p.name.toUpperCase()}</b></td>
+                                        <td style="text-align:right;">₹${(parseInt(p.price) || 0).toLocaleString()}</td>
+                                    </tr>
+                                `).join('') || '<tr><td colspan="3" style="text-align:center; padding:20px; color:#999;">No players bought yet.</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        } catch (e) { 
+            console.error(e); 
+            document.getElementById("teamsContainer").innerHTML = "<p style='text-align:center; color:red;'>Data Sync Error. Check Internet.</p>";
+        }
+    }
+
+    function toggleList(index) {
+        const targetList = document.getElementById(`list-${index}`);
+        const targetBtn = document.getElementById(`btn-${index}`);
+
+        if (targetList.classList.contains('active')) {
+            targetList.classList.remove('active');
+            targetBtn.innerText = "View Squad ↓";
+        } else {
+            // Close others
+            document.querySelectorAll('.player-list').forEach(l => l.classList.remove('active'));
+            document.querySelectorAll('.btn-view').forEach(b => b.innerText = "View Squad ↓");
+            
+            targetList.classList.add('active');
+            targetBtn.innerText = "Hide Squad ↑";
+        }
+    }
+
+    loadViewerData();
+    setInterval(loadViewerData, 30000); // Har 30 seconds mein auto-refresh
+</script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GAUTAM DIGITAL - </title>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            background: #0b132b; color: white; margin: 0; padding: 0; overflow: hidden; 
+            width: 1920px; height: 1080px; display: flex; flex-direction: column;
+            background-image: url('https://lh3.googleusercontent.com/d/18mAeE2KXLutCKTK4dtfkATY-F6UYb8FB');
+            background-repeat: no-repeat; background-position: center 40%;
+            background-size: 500px; background-blend-mode: overlay;
+        }
+
+        /* Header */
+        .header-section {
+            width: 100%; background: linear-gradient(180deg, rgba(28,37,65,1) 0%, rgba(11,19,43,0.8) 100%);
+            padding: 15px 50px; text-align: center; border-bottom: 4px solid #6fffe9;
+        }
+        h1.league-title { color: #6fffe9; text-transform: uppercase; letter-spacing: 10px; font-size: 65px; margin: 0; }
+
+        /* Bidding Section */
+        .current-player-card {
+            background: rgba(28, 37, 65, 0.85); width: 96%; height: 480px; 
+            margin: 15px auto; padding: 20px; border-radius: 40px; border: 6px solid #6fffe9;
+            display: flex; align-items: center; justify-content: center; gap: 30px;
+            backdrop-filter: blur(10px);
+        }
+        .current-photo { width: 430px; height: 430px; border-radius: 25px; border: 8px solid #6fffe9; object-fit: cover; }
+        .current-info h2 { margin: 0; color: #6fffe9; font-size: 85px; text-transform: uppercase; line-height: 1; font-weight: 900; }
+        .current-info p { margin: 10px 0; font-size: 45px; color: #5bc0be; font-weight: bold; }
+        .live-tag { background: #ff0054; color: white; padding: 6px 20px; border-radius: 6px; font-size: 18px; font-weight: 900; margin-bottom: 15px; display: inline-block; animation: blink 1s infinite; }
+
+        /* 14 Teams Grid */
+        .display-grid { 
+            display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(2, 1fr);
+            gap: 12px; width: 100%; padding: 0 30px 20px; margin-top: auto;
+        }
+
+        .team-card { 
+            background: rgba(28, 37, 65, 0.95); border-radius: 12px; padding: 10px; 
+            border-top: 5px solid #ff0054; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+        
+        .team-name { 
+            font-size: 21px; font-weight: 900; color: #6fffe9; 
+            text-transform: uppercase; margin-bottom: 8px; 
+            border-bottom: 2px solid rgba(111,255,233,0.3); 
+            padding-bottom: 4px; text-align: center;
+        }
+        
+        .team-stats { display: flex; flex-direction: column; gap: 2px; }
+        .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 1px 0; }
+        .stat-label { font-size: 13px; color: #ccc; text-transform: uppercase; font-weight: bold; }
+        
+        /* --- BIGGER FONTS HERE --- */
+        .stat-val { font-size: 22px; font-weight: 800; } /* Normal Squad count */
+        .stat-val.purse { color: #ff0054; font-size: 26px; } /* Purse bada aur bold */
+        .stat-val.max { color: #f39c12; font-size: 26px; }   /* Max Bid bada aur bold */
+
+        @keyframes blink { 50% { opacity: 0.2; } }
+    </style>
+</head>
+<body>
+
+    <div class="header-section">
+        <h1 class="league-title">🏏 SANATAN PREMIER LEAGUE🏏</h1>
+        <div style="font-size: 20px; margin-top: 5px;">Powered by <b>Gautam Digital</b> | <span style="color:#ff0054; font-weight:900">● LIVE</span></div>
+    </div>
+
+    <div class="current-player-card">
+        <img id="curPhoto" class="current-photo" src="https://via.placeholder.com/430?text=GD" alt="Player">
+        <div class="current-info">
+            <span class="live-tag">🔴 LIVE BIDDING</span>
+            <h2 id="curName">WAITING...</h2>
+            <p id="curCategory">Ready</p>
+        </div>
+    </div>
+
+    <div id="displayBoard" class="display-grid"></div>
+
+<script>
+    const mainAPI = "https://script.google.com/macros/s/AKfycbx4OBlVp-XgSXJdt4S04PAJII4bJhxYnCU6_9O3QFdr75_0XnYmw4JG3XDQbE0S32jQ1w/exec";
+
+    function getPhoto(link) {
+        if (!link || link === "NONE" || link === "") return "https://via.placeholder.com/430?text=GD";
+        let id = (link.includes("id=")) ? link.split("id=")[1].split("&")[0] : (link.includes("/d/")) ? link.split("/d/")[1].split("/")[0] : "";
+        return id ? "https://lh3.googleusercontent.com/d/" + id : link;
+    }
+
+    async function updateDisplay() {
+        try {
+            const timestamp = new Date().getTime();
+            const [pRes, tRes] = await Promise.all([
+                fetch(mainAPI + "?action=players&t=" + timestamp).then(r => r.json()),
+                fetch(mainAPI + "?action=teams&t=" + timestamp).then(r => r.json())
+            ]);
+
+            const soldPlayers = pRes.filter(p => p.status === "SOLD");
+            const available = pRes.filter(p => p.status === "AVAILABLE" || !p.status);
+
+            if (available.length > 0) {
+                const live = available[0];
+                document.getElementById("curName").innerText = live.name.toUpperCase();
+                document.getElementById("curCategory").innerText = live.type + " | " + (live.address || "HPL Seoni");
+                document.getElementById("curPhoto").src = getPhoto(live.photo);
+            }
+
+            const board = document.getElementById("displayBoard");
+            board.innerHTML = "";
+
+            tRes.forEach(t => {
+                const mySold = soldPlayers.filter(p => p.team && p.team.trim() === t.name.trim());
+                const balance = parseInt(t.balance) || 0;
+                const squadCount = mySold.length;
+
+                let maxBid = (squadCount < 13) ? (balance - ((13 - squadCount - 1) * 1000)) : balance;
+                if (maxBid < 0) maxBid = 0;
+
+                let card = document.createElement("div");
+                card.className = "team-card";
+                card.innerHTML = `
+                    <div class="team-name">${t.name}</div>
+                    <div class="team-stats">
+                        <div class="stat-row"><span class="stat-label">Squad</span><span class="stat-val">${squadCount}/13</span></div>
+                        <div class="stat-row"><span class="stat-label">Purse</span><span class="stat-val purse">₹${balance.toLocaleString()}</span></div>
+                        <div class="stat-row"><span class="stat-label">Max Bid</span><span class="stat-val max">₹${maxBid.toLocaleString()}</span></div>
+                    </div>
+                `;
+                board.appendChild(card);
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    setInterval(updateDisplay, 2000);
+    updateDisplay();
+</script>
+</body>
+</html>

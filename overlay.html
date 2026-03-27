@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <title>Live Overlay - Gautam Digital Watermark</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-family: 'Segoe UI', sans-serif; width: 1920px; height: 1080px; }
+
+        /* --- WATERMARK LOGO STYLE (Central & Global) --- */
+        .global-watermark {
+            position: absolute;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            pointer-events: none; /* Mouse touch na kare */
+            z-index: 1; /* Piche rahe sabse */
+        }
+
+        /* 1. LOWER THIRD (PLAYER BOX) & its Watermark */
+        .overlay-container {
+            position: absolute; bottom: 100px; left: 80px;
+            display: flex; align-items: center;
+            background: linear-gradient(90deg, rgba(0,0,0,0.95) 0%, rgba(35,35,35,0.9) 100%);
+            border-bottom: 5px solid #6fffe9; border-radius: 15px;
+            padding: 10px 40px 10px 160px;
+            width: 700px; height: 120px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6); z-index: 10;
+            overflow: hidden; /* Watermark boundary ke bahar na jaye */
+        }
+        
+        /* Box Background Watermark */
+        .overlay-container .box-watermark {
+            position: absolute;
+            right: 10px; bottom: 10px;
+            width: 250px; height: 100px;
+            opacity: 0.08; /* Sirf 8% opacity (Ekdum halka) */
+            z-index: -1; /* Text ke piche */
+        }
+
+        .p-photo-wrapper {
+            position: absolute; left: -20px; top: -40px;
+            width: 160px; height: 200px;
+            border-radius: 20px; border: 5px solid #6fffe9;
+            overflow: hidden; background: #222;
+            box-shadow: 0 10px 25px rgba(111,255,233,0.4);
+            z-index: 15;
+        }
+        .p-photo { width: 100%; height: 100%; object-fit: cover; }
+        
+        .p-info { display: flex; flex-direction: column; justify-content: center; height: 100%; z-index: 20; }
+        .p-info h2 { margin: 0; color: #6fffe9; font-size: 45px; text-transform: uppercase; letter-spacing: 1px; line-height: 1; }
+        .p-info p { margin: 18px 0 0; color: #ffffff; font-size: 24px; font-weight: bold; opacity: 0.9; }
+
+        /* --- 2. BRANDING (Top Right Corner) --- */
+        .branding-box {
+            position: absolute; bottom: 100px; right: 60px;
+            background: rgba(0,0,0,0.85); padding: 15px 30px;
+            border-radius: 15px; border-right: 8px solid #ff0054;
+            display: flex; flex-direction: column; align-items: flex-end;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 10;
+        }
+        .brand-name { color: white; font-size: 28px; font-weight: 900; letter-spacing: 2px; }
+        .live-text { color: #ff0054; font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+        .dot { width: 10px; height: 10px; background: #ff0054; border-radius: 50%; animation: blink 1s infinite; }
+
+        /* --- 3. NEWS TICKER --- */
+        .ticker-wrap {
+            position: fixed; bottom: 0; width: 100%; height: 65px;
+            background: #ff0054; overflow: hidden; display: flex; align-items: center;
+            z-index: 5;
+        }
+        .ticker-label {
+            background: white; color: #ff0054; padding: 0 30px; height: 100%;
+            display: flex; align-items: center; font-weight: 900; font-size: 24px;
+            z-index: 20; box-shadow: 10px 0 15px rgba(0,0,0,0.3);
+        }
+        .ticker-content {
+            white-space: nowrap; display: inline-block;
+            animation: ticker 40s linear infinite;
+            color: white; font-size: 28px; font-weight: bold; padding-left: 20px;
+        }
+        @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+        .ticker-item { margin-right: 120px; display: inline-block; }
+
+        /* --- 4. SOLD SCREEN (Celebration) --- */
+        #soldCelebration {
+            position: fixed; top: 0; left: 0; width: 1920px; height: 1080px;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+            background: rgba(0, 0, 0, 0.95); z-index: 9999;
+            overflow: hidden;
+        }
+        
+        /* Central Large Watermark for Sold Screen */
+        #soldCelebration .central-watermark {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 1000px; height: 600px;
+            transform: translate(-50%, -50%);
+            opacity: 0.15; /* 15% transparency */
+            z-index: -2; /* Piche */
+        }
+
+        .sold-text { font-size: 180px; font-weight: 900; color: #ff0054; text-shadow: 0 0 60px #ff0054; margin: 0; z-index: 5; }
+        .sold-photo { width: 380px; height: 380px; border-radius: 30px; border: 10px solid #6fffe9; margin: 20px 0; object-fit: cover; z-index: 5; }
+        .sold-msg { font-size: 60px; color: white; font-weight: bold; text-align: center; text-transform: uppercase; line-height: 1.2; z-index: 5; }
+
+        @keyframes blink { 50% { opacity: 0; } }
+    </style>
+</head>
+<body>
+
+    <div class="ticker-wrap">
+        <div class="ticker-label"> UPDATES</div>
+        <div class="ticker-content" id="tickerItems">Syncing live auction data...</div>
+    </div>
+
+    <div id="soldCelebration">
+        <div class="global-watermark central-watermark" id="gdLogoBig"></div>
+        <p class="sold-text">SOLD</p>
+        <img id="soldPhoto" class="sold-photo" src="">
+        <div id="soldMsg" class="sold-msg"></div>
+    </div>
+
+    <div class="overlay-container" id="playerBox">
+        <div class="global-watermark box-watermark" id="gdLogoSmall"></div>
+        <div class="p-photo-wrapper">
+            <img id="overPhoto" class="p-photo" src="https://via.placeholder.com/160?text=HPL">
+        </div>
+        <div class="p-info">
+            <h2 id="overName">WAITING...</h2>
+            <p id="overType">SEARCHING PLAYER</p>
+        </div>
+    </div>
+
+    <div class="branding-box">
+        <div class="brand-name">GAUTAM DIGITAL</div>
+        <div class="live-text"><span class="dot"></span> YOUTUBE LIVE</div>
+    </div>
+
+<script>
+    // --- API & DATA CONFIG ---
+        const mainAPI = "https://script.google.com/macros/s/AKfycbx4OBlVp-XgSXJdt4S04PAJII4bJhxYnCU6_9O3QFdr75_0XnYmw4JG3XDQbE0S32jQ1w/exec";
+    
+    // WATERMARK LOGO LINK (Fixed GDrive link for CSS)
+    const gdLogoLink = "https://lh3.googleusercontent.com/d/18mAeE2KXLutCKTK4dtfkATY-F6UYb8FB";
+
+    let lastSoldPlayerName = null;
+
+    // Apply Logo watermark via JavaScript to avoid caching
+    function applyWatermarks() {
+        document.getElementById('gdLogoBig').style.backgroundImage = `url(${gdLogoLink})`;
+        document.getElementById('gdLogoSmall').style.backgroundImage = `url(${gdLogoLink})`;
+    }
+
+    function getPhoto(link) {
+        if (!link || link === "NONE" || link === "") return "https://via.placeholder.com/160?text=HPL";
+        let id = (link.includes("id=")) ? link.split("id=")[1].split("&")[0] : (link.includes("/d/")) ? link.split("/d/")[1].split("/")[0] : "";
+        return id ? "https://lh3.googleusercontent.com/d/" + id : link;
+    }
+
+    async function updateOverlay() {
+        try {
+            const t = new Date().getTime();
+            const [pRes, tRes] = await Promise.all([
+                fetch(mainAPI + "?action=players&t=" + t).then(r => r.json()),
+                fetch(mainAPI + "?action=teams&t=" + t).then(r => r.json())
+            ]);
+
+            // 1. SOLD LOGIC & CELEBRATION
+            const soldOnly = pRes.filter(p => p.status === "SOLD").reverse();
+            if (soldOnly.length > 0) {
+                const latestSold = soldOnly[0];
+                if (lastSoldPlayerName && latestSold.name !== lastSoldPlayerName) {
+                    document.getElementById("soldPhoto").src = getPhoto(latestSold.photo);
+                    document.getElementById("soldMsg").innerHTML = `${latestSold.name}<br><span style="color:#6fffe9">${latestSold.team}</span><br>₹${parseInt(latestSold.price).toLocaleString('en-IN')}`;
+                    
+                    const celebDiv = document.getElementById("soldCelebration");
+                    celebDiv.style.display = "flex";
+                    
+                    confetti({ particleCount: 300, spread: 120, origin: { y: 0.6 } });
+                    setTimeout(() => { celebDiv.style.display = "none"; }, 7000);
+                }
+                lastSoldPlayerName = latestSold.name;
+            } else { lastSoldPlayerName = ""; }
+
+            // 2. NEWS TICKER
+            let tickerHTML = "";
+            soldOnly.slice(0, 5).forEach(s => {
+                tickerHTML += `<span class="ticker-item">🔥 SOLD: ${s.name.toUpperCase()} ➔ ${s.team} (₹${parseInt(s.price).toLocaleString('en-IN')})</span>`;
+            });
+            tRes.forEach(team => {
+                tickerHTML += `<span class="ticker-item">💰 ${team.name}: ₹${team.balance.toLocaleString('en-IN')}</span>`;
+            });
+            document.getElementById("tickerItems").innerHTML = tickerHTML;
+
+            // 3. CURRENT BIDDING PLAYER
+            const available = pRes.filter(p => p.status === "AVAILABLE" || !p.status);
+            if (available.length > 0) {
+                const cp = available[0];
+                document.getElementById("overName").innerText = cp.name.toUpperCase();
+                document.getElementById("overType").innerText = cp.type + " | " + (cp.address || "HPL Seoni");
+                document.getElementById("overPhoto").src = getPhoto(cp.photo);
+            }
+
+        } catch (e) { console.log("Overlay Sync Error"); }
+    }
+
+    // Refresh Speed & Initial Calls
+    applyWatermarks();
+    setInterval(updateOverlay, 3000); 
+    updateOverlay();
+</script>
+</body>
+</html>
