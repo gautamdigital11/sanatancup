@@ -104,13 +104,13 @@
                     const balance = (parseFloat(t.purse) || 50000) - spent;
                     
                     // Max Bid Rule (13 players)
-                    let maxBid = (squad.length < 13) ? (balance - ((13 - squad.length - 1) * 1000)) : balance;
+                    let maxBid = (squad.length < 15) ? (balance - ((15 - squad.length - 1) * 500)) : balance;
 
                     statsContainer.innerHTML += `
                         <div class="team-row">
                             <div class="team-info">
                                 <b>${t.name}</b>
-                                <span>Squad: ${squad.length}/13</span>
+                                <span>Squad: ${squad.length}/15</span>
                             </div>
                             <div class="team-values">
                                 <span class="val-balance">₹${balance.toLocaleString()}</span>
