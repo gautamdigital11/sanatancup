@@ -107,7 +107,7 @@
                 const squad = pRes.filter(p => p.team && p.team.trim() === t.name.trim() && p.status === "SOLD");
                 const spent = squad.reduce((sum, p) => sum + (parseFloat(p.price) || 0), 0);
                 const balance = sheetPurse - spent;
-                let maxBid = (squad.length < 13) ? (balance - ((13 - squad.length - 1) * 500)) : balance;
+                let maxBid = (squad.length < 15) ? (balance - ((15 - squad.length - 1) * 500)) : balance;
                 
                 return { name: t.name, sheetPurse, balance, squadCount: squad.length, maxBid: maxBid < 0 ? 0 : maxBid };
             });
