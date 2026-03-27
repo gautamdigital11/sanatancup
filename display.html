@@ -118,7 +118,7 @@
                 const balance = parseInt(t.balance) || 0;
                 const squadCount = mySold.length;
 
-                let maxBid = (squadCount < 13) ? (balance - ((13 - squadCount - 1) * 1000)) : balance;
+                let maxBid = (squadCount < 15) ? (balance - ((15 - squadCount - 1) * 500)) : balance;
                 if (maxBid < 0) maxBid = 0;
 
                 let card = document.createElement("div");
