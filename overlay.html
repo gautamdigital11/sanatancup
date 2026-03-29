@@ -172,7 +172,7 @@
             const soldOnly = pRes.filter(p => p.status === "SOLD").reverse();
             if (soldOnly.length > 0) {
                 const latestSold = soldOnly[0];
-                if (lastSoldPlayerName && latestSold.name !== lastSoldPlayerName) {
+                if (latestSold.name !== lastSoldPlayerName) {
                     document.getElementById("soldPhoto").src = getPhoto(latestSold.photo);
                     document.getElementById("soldMsg").innerHTML = `${latestSold.name}<br><span style="color:#6fffe9">${latestSold.team}</span><br>₹${parseInt(latestSold.price).toLocaleString('en-IN')}`;
                     
