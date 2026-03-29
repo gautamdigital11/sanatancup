@@ -2,169 +2,131 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <title>Gautam Digital - Live Auction Pro</title>
+    <link rel="icon" href="data:,"> <title>Gautam Digital Live</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-family: 'Segoe UI', Arial, sans-serif; width: 1920px; height: 1080px; }
+        body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-family: 'Segoe UI', sans-serif; width: 1920px; height: 1080px; }
 
-        /* --- CELEBRATION SCREEN (SOLD/UNSOLD) --- */
-        #celebrationScreen {
+        /* --- SOLD/UNSOLD SCREEN --- */
+        #celebScreen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             display: none; flex-direction: column; justify-content: center; align-items: center;
-            z-index: 99999; transition: 0.5s;
+            z-index: 99999; background: rgba(0,0,0,0.95);
         }
-        .sold-bg { background: rgba(0, 0, 0, 0.98); border: 20px solid #ff0054; box-sizing: border-box; }
-        .unsold-bg { background: rgba(20, 20, 20, 0.98); border: 20px solid #555; box-sizing: border-box; }
-        
-        .status-header { font-size: 250px; font-weight: 900; margin: 0; line-height: 1; animation: bounceIn 0.8s cubic-bezier(0.36, 0, 0.66, -0.56) both; }
-        .celeb-photo { width: 450px; height: 450px; border-radius: 50%; border: 15px solid white; margin: 30px 0; object-fit: cover; box-shadow: 0 0 50px rgba(255,255,255,0.3); }
-        .celeb-msg { font-size: 80px; color: white; font-weight: 900; text-align: center; text-transform: uppercase; text-shadow: 2px 2px 10px rgba(0,0,0,0.5); }
+        .status-txt { font-size: 200px; font-weight: 900; margin: 0; text-transform: uppercase; }
+        .celeb-img { width: 400px; height: 400px; border-radius: 50%; border: 15px solid white; margin: 20px; object-fit: cover; }
+        .celeb-info { font-size: 70px; color: white; text-align: center; font-weight: bold; }
 
-        /* --- LOWER THIRD (CURRENT PLAYER) --- */
-        .overlay-container {
+        /* --- LOWER THIRD --- */
+        .player-box {
             position: absolute; bottom: 80px; left: 60px;
-            display: flex; align-items: center;
-            background: rgba(0,0,0,0.9); border-left: 10px solid #6fffe9;
-            padding: 15px 40px 15px 150px; width: 650px; height: 110px;
-            border-radius: 0 20px 20px 0; box-shadow: 10px 10px 30px rgba(0,0,0,0.5);
+            display: flex; align-items: center; background: rgba(0,0,0,0.9);
+            padding: 15px 40px 15px 150px; width: 600px; height: 100px;
+            border-radius: 0 20px 20px 0; border-left: 10px solid #6fffe9;
         }
-        .p-photo-wrapper {
-            position: absolute; left: -30px; top: -30px;
-            width: 160px; height: 170px; border: 5px solid #6fffe9;
-            background: #111; overflow: hidden; border-radius: 15px;
-        }
-        .p-photo { width: 100%; height: 100%; object-fit: cover; }
-        .p-info h2 { margin: 0; color: #6fffe9; font-size: 40px; text-transform: uppercase; }
-        .p-info p { margin: 5px 0 0; color: white; font-size: 22px; font-weight: bold; opacity: 0.8; }
-
-        @keyframes bounceIn {
-            0% { opacity: 0; transform: scale(.3); }
-            50% { opacity: 1; transform: scale(1.05); }
-            70% { transform: scale(.9); }
-            100% { transform: scale(1); }
-        }
+        .p-img-wrap { position: absolute; left: -20px; top: -20px; width: 140px; height: 140px; border: 5px solid #6fffe9; border-radius: 10px; overflow: hidden; background: #222; }
+        .p-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+        .p-name { color: #6fffe9; font-size: 40px; margin: 0; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
-    <div id="celebrationScreen">
-        <p id="statusText" class="status-header"></p>
-        <img id="celebPhoto" class="celeb-photo" src="">
-        <div id="celebMsg" class="celeb-msg"></div>
+    <div id="celebScreen">
+        <h1 id="statusTitle" class="status-txt"></h1>
+        <img id="celebImg" class="celeb-img" src="">
+        <div id="celebDetail" class="celeb-info"></div>
     </div>
 
-    <div class="overlay-container">
-        <div class="p-photo-wrapper">
-            <img id="overPhoto" class="p-photo" src="">
-        </div>
+    <div class="player-box">
+        <div class="p-img-wrap"><img id="mainImg" src=""></div>
         <div class="p-info">
-            <h2 id="overName">WAITING...</h2>
-            <p id="overType">GAUTAM DIGITAL LIVE</p>
+            <h2 id="mainName">WAITING...</h2>
+            <p id="mainType" style="color:white; margin:0; opacity:0.8;">GAUTAM DIGITAL</p>
         </div>
     </div>
 
 <script>
-    const mainAPI = "https://script.google.com/macros/s/AKfycbx4OBlVp-XgSXJdt4S04PAJII4bJhxYnCU6_9O3QFdr75_0XnYmw4JG3XDQbE0S32jQ1w/exec";
+    const apiURL = "https://script.google.com/macros/s/AKfycbx4OBlVp-XgSXJdt4S04PAJII4bJhxYnCU6_9O3QFdr75_0XnYmw4JG3XDQbE0S32jQ1w/exec";
     
+    let currentShownPlayer = ""; // Track current player on screen
+    let lastActionID = ""; // Track last SOLD/UNSOLD action
     let isAnimating = false;
 
-    // फोटो लिंक फिक्स करने के लिए
-    function getPhoto(link) {
-        if (!link || link === "NONE" || link === "") return "https://via.placeholder.com/200?text=NO+IMAGE";
-        let id = "";
-        if (link.includes("id=")) { id = link.split("id=")[1].split("&")[0]; }
-        else if (link.includes("/d/")) { id = link.split("/d/")[1].split("/")[0]; }
+    function getImg(link) {
+        if (!link || link === "NONE") return "https://via.placeholder.com/200";
+        let id = link.includes("id=") ? link.split("id=")[1].split("&")[0] : link.split("/d/")[1]?.split("/")[0];
         return id ? "https://lh3.googleusercontent.com/d/" + id : link;
     }
 
-    async function updateData() {
+    async function sync() {
         if (isAnimating) return;
 
         try {
-            const t = new Date().getTime();
-            const response = await fetch(mainAPI + "?action=players&t=" + t);
-            const players = await response.json();
+            const res = await fetch(apiURL + "?action=players&t=" + Date.now());
+            const data = await res.json();
             
-            // 1. सबसे पहले Current Bidding Player दिखाओ (Status: Khali ya AVAILABLE)
-            const currentPlayer = players.find(p => !p.status || p.status.trim() === "" || p.status.toUpperCase() === "AVAILABLE" || p.status.toUpperCase() === "BIDDING");
-            
-            if (currentPlayer) {
-                document.getElementById("overName").innerText = currentPlayer.name.toUpperCase();
-                document.getElementById("overType").innerText = `${currentPlayer.type} | ${currentPlayer.address || 'HPL'}`;
-                document.getElementById("overPhoto").src = getPhoto(currentPlayer.photo);
-            }
-
-            // 2. एनीमेशन लॉजिक (Check for SOLD/UNSOLD)
-            // हम प्लेयर्स को पीछे से चेक करेंगे (Latest Action First)
-            for (let i = players.length - 1; i >= 0; i--) {
-                const p = players[i];
-                const status = p.status ? p.status.toUpperCase().trim() : "";
-                
-                if (status === "SOLD" || status === "UNSOLD") {
-                    // एक यूनिक आईडी बनाओ (Name + Team + Price + Status)
-                    const uniqueActionID = "ACT_" + p.name + "_" + status + "_" + (p.price || "0");
-                    
-                    // चेक करो क्या यह एक्शन पहले दिखाया जा चुका है?
-                    if (localStorage.getItem("lastAction") !== uniqueActionID) {
-                        
-                        // अगर पेज पहली बार लोड हो रहा है, तो एनीमेशन न दिखाएं (सिर्फ आईडी सेव करें)
-                        if (!localStorage.getItem("lastAction")) {
-                            localStorage.setItem("lastAction", uniqueActionID);
-                            continue; 
-                        }
-
-                        // नया एक्शन मिला! एनीमेशन ट्रिगर करें
-                        localStorage.setItem("lastAction", uniqueActionID);
-                        triggerAnimation(p, status);
-                        break; 
-                    } else {
-                        // अगर सबसे लेटेस्ट एक्शन पहले ही दिखाया जा चुका है, तो आगे चेक करने की जरूरत नहीं
-                        break;
-                    }
+            // 1. Check for Latest SOLD/UNSOLD (Looking from end of sheet)
+            let latestAction = null;
+            for(let i = data.length - 1; i >= 0; i--) {
+                let s = data[i].status ? data[i].status.toUpperCase().trim() : "";
+                if (s === "SOLD" || s === "UNSOLD") {
+                    latestAction = data[i];
+                    break;
                 }
             }
 
-        } catch (e) { console.error("Sync Error"); }
+            if (latestAction) {
+                let actionKey = latestAction.name + latestAction.status + (latestAction.price || "");
+                
+                // If this is a NEW action that we haven't shown yet
+                if (lastActionID !== "" && lastActionID !== actionKey) {
+                    lastActionID = actionKey;
+                    runAnimation(latestAction);
+                    return; // Stop here, animation takes priority
+                }
+                lastActionID = actionKey; // Update key without animation on first load
+            }
+
+            // 2. Update Current Player (Only if not animating)
+            const active = data.find(p => !p.status || p.status.toUpperCase() === "AVAILABLE" || p.status.toUpperCase() === "BIDDING");
+            if (active && active.name !== currentShownPlayer) {
+                currentShownPlayer = active.name;
+                document.getElementById("mainName").innerText = active.name.toUpperCase();
+                document.getElementById("mainImg").src = getImg(active.photo);
+                document.getElementById("mainType").innerText = active.type + " | " + (active.address || "HPL");
+            }
+
+        } catch (e) { console.error("API Error"); }
     }
 
-    function triggerAnimation(player, status) {
+    function runAnimation(p) {
         isAnimating = true;
-        const screen = document.getElementById("celebrationScreen");
-        const statusText = document.getElementById("statusText");
-        const celebPhoto = document.getElementById("celebPhoto");
-        const celebMsg = document.getElementById("celebMsg");
+        const screen = document.getElementById("celebScreen");
+        const title = document.getElementById("statusTitle");
+        const info = document.getElementById("celebDetail");
+        const img = document.getElementById("celebImg");
 
-        celebPhoto.src = getPhoto(player.photo);
+        let s = p.status.toUpperCase();
+        img.src = getImg(p.photo);
+        title.innerText = s;
+        title.style.color = (s === "SOLD") ? "#ff0054" : "#ffffff";
         
-        if (status === "SOLD") {
-            screen.className = "sold-bg";
-            statusText.innerText = "SOLD";
-            statusText.style.color = "#ff0054";
-            celebMsg.innerHTML = `<span style="color:white">${player.name}</span><br><span style="color:#6fffe9">${player.team}</span><br><span style="color:#ffcc00">₹${parseInt(player.price).toLocaleString('en-IN')}</span>`;
-            
-            // पटाखा इफेक्ट
-            confetti({ particleCount: 500, spread: 150, origin: { y: 0.6 }, zIndex: 100000 });
+        if (s === "SOLD") {
+            info.innerHTML = `${p.name}<br><span style="color:#6fffe9">${p.team}</span><br><span style="color:#ffcc00">₹${parseInt(p.price).toLocaleString('en-IN')}</span>`;
+            confetti({ particleCount: 500, spread: 120, origin: { y: 0.6 } });
         } else {
-            screen.className = "unsold-bg";
-            statusText.innerText = "UNSOLD";
-            statusText.style.color = "#ffffff";
-            celebMsg.innerHTML = `<span style="color:white">${player.name}</span><br><span style="color:#aaaaaa; font-size:40px;">UNSOLD PLAYER</span>`;
+            info.innerHTML = `${p.name}<br><span style="color:#aaa">UNSOLD</span>`;
         }
 
         screen.style.display = "flex";
-
-        // 8 सेकंड तक एनीमेशन दिखाओ
         setTimeout(() => {
             screen.style.display = "none";
             isAnimating = false;
         }, 8000);
     }
 
-    // पेज लोड होते ही लोकल स्टोरेज साफ करें ताकि नया ऑक्शन फ्रेश शुरू हो (Optional)
-    // window.onload = () => { localStorage.removeItem("lastAction"); };
-
-    setInterval(updateData, 3000);
-    updateData();
+    setInterval(sync, 3000);
+    sync();
 </script>
 </body>
 </html>
