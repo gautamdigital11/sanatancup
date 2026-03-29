@@ -2,35 +2,32 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <link rel="icon" href="data:,">
-    <title>Gautam Digital - Final Fixed Overlay</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gautam Digital - Live Auction</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-family: 'Segoe UI', sans-serif; width: 1920px; height: 1080px; }
-
-        /* --- CELEBRATION SCREEN (SOLD/UNSOLD) --- */
+        
+        /* SOLD/UNSOLD SCREEN */
         #celebScreen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             display: none; flex-direction: column; justify-content: center; align-items: center;
-            z-index: 99999; background: rgba(0,0,0,0.96);
+            z-index: 9999; background: rgba(0,0,0,0.98);
         }
-        .status-txt { font-size: 220px; font-weight: 900; margin: 0; text-transform: uppercase; animation: zoomIn 0.5s; }
-        .celeb-img { width: 420px; height: 420px; border-radius: 50%; border: 15px solid #6fffe9; margin: 20px; object-fit: cover; box-shadow: 0 0 60px rgba(111,255,233,0.4); }
-        .celeb-info { font-size: 75px; color: white; text-align: center; font-weight: bold; line-height: 1.1; }
+        .status-txt { font-size: 250px; font-weight: 900; margin: 0; text-transform: uppercase; line-height: 1; }
+        .celeb-img { width: 450px; height: 450px; border-radius: 50%; border: 15px solid white; margin: 20px; object-fit: cover; }
+        .celeb-info { font-size: 80px; color: white; text-align: center; font-weight: bold; }
 
-        /* --- LOWER THIRD --- */
+        /* LOWER THIRD */
         .player-box {
             position: absolute; bottom: 80px; left: 60px;
             display: flex; align-items: center; background: rgba(0,0,0,0.9);
-            padding: 15px 40px 15px 150px; width: 620px; height: 110px;
-            border-radius: 0 20px 20px 0; border-left: 12px solid #6fffe9;
-            box-shadow: 10px 10px 30px rgba(0,0,0,0.5);
+            padding: 15px 40px 15px 150px; width: 650px; height: 110px;
+            border-radius: 0 20px 20px 0; border-left: 10px solid #6fffe9;
         }
-        .p-img-wrap { position: absolute; left: -20px; top: -35px; width: 150px; height: 170px; border: 5px solid #6fffe9; border-radius: 15px; overflow: hidden; background: #222; }
-        .p-img-wrap img { width: 100%; height: 100%; object-fit: cover; }
-        .p-name { color: #6fffe9; font-size: 45px; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
-
-        @keyframes zoomIn { 0% { transform: scale(0.3); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .img-wrap { position: absolute; left: -20px; top: -30px; width: 150px; height: 170px; border: 5px solid #6fffe9; border-radius: 15px; overflow: hidden; background: #222; }
+        .img-wrap img { width: 100%; height: 100%; object-fit: cover; }
+        .p-name { color: #6fffe9; font-size: 45px; margin: 0; text-transform: uppercase; }
     </style>
 </head>
 <body>
@@ -42,99 +39,89 @@
     </div>
 
     <div class="player-box">
-        <div class="p-img-wrap"><img id="mainImg" src=""></div>
+        <div class="img-wrap"><img id="mainImg" src=""></div>
         <div class="p-info">
             <h2 id="mainName" class="p-name">WAITING...</h2>
-            <p id="mainType" style="color:white; margin:8px 0 0; font-size:24px; font-weight:bold; opacity:0.8;">GAUTAM DIGITAL LIVE</p>
+            <p id="mainType" style="color:white; margin:5px 0 0; font-size:24px;">GAUTAM DIGITAL LIVE</p>
         </div>
     </div>
 
 <script>
     const apiURL = "https://script.google.com/macros/s/AKfycbx4OBlVp-XgSXJdt4S04PAJII4bJhxYnCU6_9O3QFdr75_0XnYmw4JG3XDQbE0S32jQ1w/exec";
     
-    let lastProcessedKey = ""; 
+    let lastActionID = ""; 
     let isAnimating = false;
 
     function getImg(link) {
-        if (!link || link === "NONE" || link === "") return "https://via.placeholder.com/300?text=IMAGE";
+        if (!link || link === "NONE") return "https://via.placeholder.com/300?text=IMAGE";
         let id = link.includes("id=") ? link.split("id=")[1].split("&")[0] : link.split("/d/")[1]?.split("/")[0];
         return id ? "https://lh3.googleusercontent.com/d/" + id : link;
     }
 
-    async function syncData() {
+    async function sync() {
         if (isAnimating) return;
 
         try {
-            const t = Date.now();
-            const response = await fetch(apiURL + "?action=players&t=" + t);
-            const data = await response.json();
+            const res = await fetch(apiURL + "?action=players&t=" + Date.now());
+            const data = await res.json();
             
-            // 1. SOLD/UNSOLD ढूंढने का सबसे पक्का तरीका
-            let latestAction = null;
+            // 1. Check for Latest SOLD/UNSOLD
+            let latest = null;
             for(let i = data.length - 1; i >= 0; i--) {
                 let s = data[i].status ? data[i].status.toString().toUpperCase().trim() : "";
                 if (s === "SOLD" || s === "UNSOLD") {
-                    latestAction = data[i];
-                    break; 
+                    latest = data[i];
+                    break;
                 }
             }
 
-            if (latestAction) {
-                let statusClean = latestAction.status.toString().toUpperCase().trim();
-                let actionKey = latestAction.name + statusClean + (latestAction.price || "");
-                
-                // अगर नया सोल्ड/अनसोल्ड मिला
-                if (lastProcessedKey !== "" && lastProcessedKey !== actionKey) {
-                    lastProcessedKey = actionKey;
-                    startAnimation(latestAction, statusClean);
-                    return; 
+            if (latest) {
+                let statusClean = latest.status.toString().toUpperCase().trim();
+                let actionKey = latest.name + statusClean + (latest.price || "");
+
+                // Logic: Agar data naya hai aur lastActionID set hai (Initial load pe nahi chalega)
+                if (lastActionID !== "" && lastActionID !== actionKey) {
+                    lastActionID = actionKey;
+                    triggerCelebration(latest, statusClean);
+                    return;
                 }
-                lastProcessedKey = actionKey; 
+                lastActionID = actionKey;
             }
 
-            // 2. Current Bidding Player Update
+            // 2. Update Current Player
             const active = data.find(p => !p.status || p.status.toString().toUpperCase().trim() === "AVAILABLE" || p.status.toString().toUpperCase().trim() === "BIDDING");
             if (active) {
                 document.getElementById("mainName").innerText = active.name.toUpperCase();
                 document.getElementById("mainImg").src = getImg(active.photo);
-                document.getElementById("mainType").innerText = `${active.type} | ${active.address || 'HPL SEONI'}`;
+                document.getElementById("mainType").innerText = `${active.type} | ${active.address || 'HPL'}`;
             }
 
-        } catch (e) { console.log("Check API/Internet Connection"); }
+        } catch (e) { console.error("API Error"); }
     }
 
-    function startAnimation(p, status) {
+    function triggerCelebration(p, status) {
         isAnimating = true;
         const screen = document.getElementById("celebScreen");
-        const title = document.getElementById("statusTitle");
-        const info = document.getElementById("celebDetail");
-        const img = document.getElementById("celebImg");
-
-        img.src = getImg(p.photo);
-        title.innerText = status;
+        document.getElementById("celebImg").src = getImg(p.photo);
+        document.getElementById("statusTitle").innerText = status;
+        document.getElementById("statusTitle").style.color = (status === "SOLD") ? "#ff0054" : "#ffffff";
         
         if (status === "SOLD") {
-            title.style.color = "#ff0054"; // Red for Sold
-            info.innerHTML = `<span style="font-size:85px;">${p.name}</span><br><span style="color:#6fffe9">${p.team}</span><br><span style="color:#ffcc00">₹${parseInt(p.price || 0).toLocaleString('en-IN')}</span>`;
-            
-            // पटाखा (Confetti)
-            confetti({ particleCount: 600, spread: 150, origin: { y: 0.6 }, zIndex: 100000 });
+            document.getElementById("celebDetail").innerHTML = `${p.name}<br><span style="color:#6fffe9">${p.team}</span><br><span style="color:#ffcc00">₹${parseInt(p.price || 0).toLocaleString('en-IN')}</span>`;
+            confetti({ particleCount: 600, spread: 150, origin: { y: 0.6 }, zIndex: 10000 });
         } else {
-            title.style.color = "#ffffff"; // White for Unsold
-            info.innerHTML = `<span style="font-size:85px;">${p.name}</span><br><span style="color:#aaaaaa">BETTER LUCK NEXT TIME</span>`;
+            document.getElementById("celebDetail").innerHTML = `${p.name}<br><span style="color:#aaa">UNSOLD</span>`;
         }
 
         screen.style.display = "flex";
-
-        // 8 सेकंड तक एनीमेशन दिखाएं
         setTimeout(() => {
             screen.style.display = "none";
             isAnimating = false;
         }, 8000);
     }
 
-    setInterval(syncData, 3000);
-    syncData();
+    setInterval(sync, 3000);
+    sync();
 </script>
 </body>
 </html>
