@@ -1,219 +1,168 @@
 <!DOCTYPE html>
-
 <html lang="hi">
 <head>
-<meta charset="UTF-8">
-<title>Live Overlay - Gautam Digital</title>
+    <meta charset="UTF-8">
+    <link rel="icon" href="data:,">
+    <title>Live Auction Overlay - Gautam Digital</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-family: 'Segoe UI', sans-serif; width: 1920px; height: 1080px; }
 
-<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+        /* --- WATERMARKS --- */
+        .global-watermark { position: absolute; background-repeat: no-repeat; background-position: center; background-size: contain; pointer-events: none; z-index: 1; }
+        .box-watermark { position: absolute; right: 10px; bottom: 10px; width: 250px; height: 100px; opacity: 0.08; z-index: -1; }
+        .central-watermark { position: absolute; top: 50%; left: 50%; width: 1000px; height: 600px; transform: translate(-50%, -50%); opacity: 0.12; z-index: -1; }
 
-<style>
-body {
-margin:0;
-padding:0;
-overflow:hidden;
-background:transparent;
-width:1920px;
-height:1080px;
-font-family:'Segoe UI', sans-serif;
-}
+        /* --- LOWER THIRD (PLAYER BOX) --- */
+        .overlay-container {
+            position: absolute; bottom: 100px; left: 80px;
+            display: flex; align-items: center;
+            background: linear-gradient(90deg, rgba(0,0,0,0.95) 0%, rgba(35,35,35,0.9) 100%);
+            border-bottom: 5px solid #6fffe9; border-radius: 15px;
+            padding: 10px 40px 10px 160px; width: 700px; height: 120px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6); z-index: 10;
+        }
+        .p-photo-wrapper {
+            position: absolute; left: -20px; top: -40px; width: 160px; height: 200px;
+            border-radius: 20px; border: 5px solid #6fffe9; overflow: hidden; background: #222;
+            box-shadow: 0 10px 25px rgba(111,255,233,0.4); z-index: 15;
+        }
+        .p-photo { width: 100%; height: 100%; object-fit: cover; }
+        .p-info h2 { margin: 0; color: #6fffe9; font-size: 45px; text-transform: uppercase; line-height: 1; }
+        .p-info p { margin: 18px 0 0; color: #ffffff; font-size: 24px; font-weight: bold; opacity: 0.9; }
 
-/* PLAYER BOX */
-.overlay-container {
-position:absolute;
-bottom:100px;
-left:80px;
-display:flex;
-align-items:center;
-background:linear-gradient(90deg, rgba(0,0,0,0.95), rgba(35,35,35,0.9));
-border-radius:15px;
-padding:10px 40px 10px 160px;
-width:700px;
-height:120px;
-}
+        /* --- SOLD/UNSOLD SCREEN --- */
+        #celebrationScreen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 99999; background: rgba(0,0,0,0.95);
+        }
+        .status-txt { font-size: 200px; font-weight: 900; margin: 0; text-transform: uppercase; animation: zoomIn 0.5s; }
+        .celeb-img { width: 400px; height: 400px; border-radius: 40px; border: 12px solid #6fffe9; margin: 20px; object-fit: cover; box-shadow: 0 0 50px rgba(111,255,233,0.5); }
+        .celeb-info { font-size: 70px; color: white; text-align: center; font-weight: bold; line-height: 1.1; }
 
-.p-photo-wrapper {
-position:absolute;
-left:-20px;
-top:-40px;
-width:160px;
-height:200px;
-border-radius:20px;
-overflow:hidden;
-border:4px solid #6fffe9;
-}
-
-.p-photo {
-width:100%;
-height:100%;
-object-fit:cover;
-}
-
-.p-info h2 {
-margin:0;
-color:#6fffe9;
-font-size:40px;
-}
-
-.p-info p {
-margin-top:10px;
-color:white;
-font-size:22px;
-}
-
-/* SOLD SCREEN */
-#soldCelebration {
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-display:none;
-justify-content:center;
-align-items:center;
-flex-direction:column;
-background:rgba(0,0,0,0.95);
-z-index:9999;
-}
-
-.sold-text {
-font-size:150px;
-font-weight:900;
-color:#ff0054;
-}
-
-.sold-photo {
-width:350px;
-height:350px;
-border-radius:20px;
-margin:20px;
-border:6px solid #6fffe9;
-}
-
-.sold-msg {
-font-size:50px;
-color:white;
-text-align:center;
-}
-</style>
-
+        /* --- TICKER & BRANDING --- */
+        .branding-box { position: absolute; bottom: 100px; right: 60px; background: rgba(0,0,0,0.85); padding: 15px 30px; border-radius: 15px; border-right: 8px solid #ff0054; display: flex; flex-direction: column; align-items: flex-end; z-index: 10; }
+        .brand-name { color: white; font-size: 28px; font-weight: 900; }
+        .ticker-wrap { position: fixed; bottom: 0; width: 100%; height: 65px; background: #ff0054; overflow: hidden; display: flex; align-items: center; z-index: 5; }
+        .ticker-content { white-space: nowrap; display: inline-block; animation: ticker 60s linear infinite; color: white; font-size: 26px; font-weight: bold; }
+        
+        @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+        @keyframes zoomIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    </style>
 </head>
-
 <body>
 
-<!-- SOLD SCREEN -->
+    <div id="celebrationScreen">
+        <div class="global-watermark central-watermark" id="gdLogoBig"></div>
+        <h1 id="statusTitle" class="status-txt"></h1>
+        <img id="celebImg" class="celeb-img" src="">
+        <div id="celebDetail" class="celeb-info"></div>
+    </div>
 
-<div id="soldCelebration">
-<p class="sold-text">SOLD</p>
-<img id="soldPhoto" class="sold-photo">
-<div id="soldMsg" class="sold-msg"></div>
-</div>
+    <div class="overlay-container" id="playerBox">
+        <div class="global-watermark box-watermark" id="gdLogoSmall"></div>
+        <div class="p-photo-wrapper"><img id="overPhoto" class="p-photo" src=""></div>
+        <div class="p-info">
+            <h2 id="overName">WAITING...</h2>
+            <p id="overType">GAUTAM DIGITAL LIVE</p>
+        </div>
+    </div>
 
-<!-- PLAYER BOX -->
+    <div class="branding-box">
+        <div class="brand-name">GAUTAM DIGITAL</div>
+        <div class="brand-name" style="font-size: 20px; color: #6fffe9;">7999984007</div>
+    </div>
 
-<div class="overlay-container">
-<div class="p-photo-wrapper">
-<img id="overPhoto" class="p-photo" src="">
-</div>
-<div class="p-info">
-<h2 id="overName">WAITING...</h2>
-<p id="overType">SEARCHING PLAYER</p>
-</div>
-</div>
+    <div class="ticker-wrap">
+        <div class="ticker-content" id="tickerItems">Syncing live data...</div>
+    </div>
 
 <script>
+    const mainAPI = "https://script.google.com/macros/s/AKfycbx4OBlVp-XgSXJdt4S04PAJII4bJhxYnCU6_9O3QFdr75_0XnYmw4JG3XDQbE0S32jQ1w/exec";
+    const gdLogoLink = "https://lh3.googleusercontent.com/d/18mAeE2KXLutCKTK4dtfkATY-F6UYb8FB"; 
 
-// 🔗 API
-const mainAPI = "https://script.google.com/macros/s/AKfycbx4OBlVp-XgSXJdt4S04PAJII4bJhxYnCU6_9O3QFdr75_0XnYmw4JG3XDQbE0S32jQ1w/exec";
+    let lastActionKey = ""; 
+    let isAnimating = false;
 
-// 🔥 FIXED
-let lastSoldPlayerName = "";
+    function getPhoto(link) {
+        if (!link || link === "NONE") return "https://via.placeholder.com/200";
+        let id = link.includes("id=") ? link.split("id=")[1].split("&")[0] : link.split("/d/")[1]?.split("/")[0];
+        return id ? "https://lh3.googleusercontent.com/d/" + id : link;
+    }
 
-// photo handler
-function getPhoto(link){
-if(!link || link==="NONE") return "https://via.placeholder.com/300";
-return link;
-}
+    async function updateOverlay() {
+        if (isAnimating) return;
+        try {
+            const t = Date.now();
+            const [pRes, tRes] = await Promise.all([
+                fetch(mainAPI + "?action=players&t=" + t).then(r => r.json()),
+                fetch(mainAPI + "?action=teams&t=" + t).then(r => r.json())
+            ]);
 
-async function updateOverlay(){
-try{
+            // 1. SOLD / UNSOLD LOGIC (Looking for the latest action)
+            const actions = pRes.filter(p => p.status === "SOLD" || p.status === "UNSOLD");
+            if (actions.length > 0) {
+                const latest = actions[actions.length - 1]; // Sheet का सबसे आखिरी प्लेयर
+                const currentKey = latest.name + latest.status + (latest.price || "");
 
-const t = new Date().getTime();
+                if (lastActionKey !== "" && lastActionKey !== currentKey) {
+                    runCelebration(latest);
+                }
+                lastActionKey = currentKey;
+            }
 
-// fetch data
-const res = await fetch(mainAPI+"?action=players&t="+t);
-const data = await res.json();
+            // 2. NEWS TICKER
+            let tickerHTML = "";
+            actions.slice(-5).reverse().forEach(s => {
+                tickerHTML += ` <span style="margin-right:50px;">🔥 ${s.status}: ${s.name.toUpperCase()} ➔ ${s.team || 'None'} (₹${parseInt(s.price || 0).toLocaleString('en-IN')})</span>`;
+            });
+            tRes.forEach(team => {
+                tickerHTML += ` <span style="margin-right:50px;">💰 ${team.name}: ₹${team.balance.toLocaleString('en-IN')}</span>`;
+            });
+            document.getElementById("tickerItems").innerHTML = tickerHTML;
 
-// DEBUG
-console.log("DATA:", data);
+            // 3. CURRENT PLAYER
+            const active = pRes.find(p => !p.status || p.status === "AVAILABLE" || p.status === "BIDDING");
+            if (active) {
+                document.getElementById("overName").innerText = active.name.toUpperCase();
+                document.getElementById("overType").innerText = `${active.type} | ${active.address || 'HPL Seoni'}`;
+                document.getElementById("overPhoto").src = getPhoto(active.photo);
+            }
 
-// SOLD PLAYER
-const sold = data.filter(p=>p.status==="SOLD").reverse();
+        } catch (e) { console.log("Sync Error"); }
+    }
 
-if(sold.length > 0){
-const latest = sold[0];
+    function runCelebration(player) {
+        isAnimating = true;
+        const screen = document.getElementById("celebrationScreen");
+        const title = document.getElementById("statusTitle");
+        const img = document.getElementById("celebImg");
+        const detail = document.getElementById("celebDetail");
 
-// ✅ MAIN FIX
-if(latest.name !== lastSoldPlayerName){
+        const status = player.status.toUpperCase();
+        img.src = getPhoto(player.photo);
+        title.innerText = status;
+        title.style.color = (status === "SOLD") ? "#ff0054" : "#ffffff";
 
-console.log("🔥 NEW SOLD:", latest.name);
+        if (status === "SOLD") {
+            detail.innerHTML = `${player.name}<br><span style="color:#6fffe9">${player.team}</span><br><span style="color:#ffcc00">₹${parseInt(player.price).toLocaleString('en-IN')}</span>`;
+            confetti({ particleCount: 500, spread: 160, origin: { y: 0.6 }, zIndex: 100000 });
+        } else {
+            detail.innerHTML = `${player.name}<br><span style="color:#aaa">UNSOLD</span>`;
+        }
 
-// set data
-document.getElementById("soldPhoto").src = getPhoto(latest.photo);
+        screen.style.display = "flex";
+        setTimeout(() => {
+            screen.style.display = "none";
+            isAnimating = false;
+        }, 8000); // 8 सेकंड तक एनीमेशन चलेगा
+    }
 
-document.getElementById("soldMsg").innerHTML =
-`${latest.name}<br>
-<span style="color:#6fffe9">${latest.team}</span><br>
-₹${parseInt(latest.price).toLocaleString('en-IN')}`;
-
-// animation show
-const box = document.getElementById("soldCelebration");
-
-// FORCE RESET (IMPORTANT)
-box.style.display="none";
-void box.offsetWidth;
-
-box.style.display="flex";
-
-// confetti
-confetti({
-particleCount:300,
-spread:120
-});
-
-// auto hide
-setTimeout(()=>{
-box.style.display="none";
-},6000);
-
-}
-
-// update last
-lastSoldPlayerName = latest.name;
-
-}
-
-// CURRENT PLAYER
-const available = data.filter(p=>p.status==="AVAILABLE" || !p.status);
-
-if(available.length > 0){
-const p = available[0];
-
-document.getElementById("overName").innerText = p.name.toUpperCase();
-document.getElementById("overType").innerText = p.type;
-document.getElementById("overPhoto").src = getPhoto(p.photo);
-}
-
-}catch(e){
-console.log("ERROR:", e);
-}
-}
-
-// 🚀 FAST REFRESH
-setInterval(updateOverlay,1500);
-updateOverlay();
-
+    document.getElementById('gdLogoBig').style.backgroundImage = `url(${gdLogoLink})`;
+    document.getElementById('gdLogoSmall').style.backgroundImage = `url(${gdLogoLink})`;
+    setInterval(updateOverlay, 3000);
+    updateOverlay();
 </script>
-
 </body>
 </html>
