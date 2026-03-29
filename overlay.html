@@ -2,232 +2,162 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <title>Live Overlay - Gautam Digital Watermark</title>
+    <title>Live Auction Overlay - Gautam Digital</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; width: 1920px; height: 1080px; }
+        body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-family: 'Segoe UI', sans-serif; width: 1920px; height: 1080px; }
 
-        /* --- WATERMARK LOGO STYLE --- */
-        .global-watermark {
-            position: absolute;
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: contain;
-            pointer-events: none;
-            z-index: 1;
-        }
+        /* --- WATERMARKS --- */
+        .global-watermark { position: absolute; background-repeat: no-repeat; background-position: center; background-size: contain; pointer-events: none; z-index: 1; }
+        .box-watermark { position: absolute; right: 10px; bottom: 10px; width: 250px; height: 100px; opacity: 0.08; z-index: -1; }
 
-        /* 1. LOWER THIRD (PLAYER BOX) */
+        /* --- PLAYER BOX (LOWER THIRD) --- */
         .overlay-container {
             position: absolute; bottom: 100px; left: 80px;
             display: flex; align-items: center;
             background: linear-gradient(90deg, rgba(0,0,0,0.95) 0%, rgba(35,35,35,0.9) 100%);
             border-bottom: 5px solid #6fffe9; border-radius: 15px;
-            padding: 10px 40px 10px 160px;
-            width: 700px; height: 120px;
+            padding: 10px 40px 10px 160px; width: 700px; height: 120px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.6); z-index: 10;
-            overflow: hidden;
         }
-        
-        .box-watermark {
-            position: absolute; right: 10px; bottom: 10px;
-            width: 250px; height: 100px; opacity: 0.08; z-index: -1;
-        }
-
         .p-photo-wrapper {
-            position: absolute; left: -20px; top: -40px;
-            width: 160px; height: 200px;
-            border-radius: 20px; border: 5px solid #6fffe9;
-            overflow: hidden; background: #222;
-            box-shadow: 0 10px 25px rgba(111,255,233,0.4);
-            z-index: 15;
+            position: absolute; left: -20px; top: -40px; width: 160px; height: 200px;
+            border-radius: 20px; border: 5px solid #6fffe9; overflow: hidden; background: #222;
+            box-shadow: 0 10px 25px rgba(111,255,233,0.4); z-index: 15;
         }
         .p-photo { width: 100%; height: 100%; object-fit: cover; }
-        
-        .p-info { display: flex; flex-direction: column; justify-content: center; height: 100%; z-index: 20; }
-        .p-info h2 { margin: 0; color: #6fffe9; font-size: 45px; text-transform: uppercase; letter-spacing: 1px; line-height: 1; }
-        .p-info p { margin: 18px 0 0; color: #ffffff; font-size: 24px; font-weight: bold; opacity: 0.9; }
+        .p-info h2 { margin: 0; color: #6fffe9; font-size: 45px; text-transform: uppercase; }
+        .p-info p { margin: 10px 0 0; color: #ffffff; font-size: 24px; font-weight: bold; }
 
-        /* --- 2. BRANDING (Top Right Corner) --- */
-        .branding-box {
-            position: absolute; bottom: 100px; right: 60px;
-            background: rgba(0,0,0,0.85); padding: 15px 30px;
-            border-radius: 15px; border-right: 8px solid #ff0054;
-            display: flex; flex-direction: column; align-items: flex-end;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 10;
-        }
-        .brand-name { color: white; font-size: 28px; font-weight: 900; letter-spacing: 2px; }
-        .live-text { color: #ff0054; font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
-        .dot { width: 10px; height: 10px; background: #ff0054; border-radius: 50%; animation: blink 1s infinite; }
-
-        /* --- 3. NEWS TICKER --- */
-        .ticker-wrap {
-            position: fixed; bottom: 0; width: 100%; height: 65px;
-            background: #ff0054; overflow: hidden; display: flex; align-items: center;
-            z-index: 5;
-        }
-        .ticker-label {
-            background: white; color: #ff0054; padding: 0 30px; height: 100%;
-            display: flex; align-items: center; font-weight: 900; font-size: 24px;
-            z-index: 20; box-shadow: 10px 0 15px rgba(0,0,0,0.3);
-        }
-        .ticker-content {
-            white-space: nowrap; display: inline-block;
-            animation: ticker 100s linear infinite;
-            color: white; font-size: 28px; font-weight: bold; padding-left: 20px;
-        }
-        @keyframes ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-        .ticker-item { margin-right: 120px; display: inline-block; }
-
-        /* --- 4. SOLD SCREEN (Celebration) --- */
-        #soldCelebration {
+        /* --- CELEBRATION SCREEN (SOLD/UNSOLD) --- */
+        #celebrationScreen {
             position: fixed; top: 0; left: 0; width: 1920px; height: 1080px;
-            display: none; /* JS toggles to flex */
-            flex-direction: column; justify-content: center; align-items: center;
-            background: rgba(0, 0, 0, 0.98); z-index: 99999; 
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 99999; animation: fadeIn 0.5s;
         }
+        .status-header { font-size: 200px; font-weight: 900; margin: 0; text-shadow: 0 0 50px rgba(0,0,0,0.5); animation: zoomIn 0.6s cubic-bezier(0.17, 0.67, 0.83, 0.67); }
+        .sold-bg { background: rgba(0, 0, 0, 0.95); }
+        .unsold-bg { background: rgba(50, 50, 50, 0.95); }
         
-        .central-watermark {
-            position: absolute; top: 50%; left: 50%;
-            width: 1000px; height: 600px;
-            transform: translate(-50%, -50%);
-            opacity: 0.12; z-index: -1;
-        }
+        .celeb-photo { width: 400px; height: 400px; border-radius: 30px; border: 10px solid white; margin: 20px 0; object-fit: cover; }
+        .celeb-msg { font-size: 60px; color: white; font-weight: bold; text-align: center; text-transform: uppercase; }
 
-        .sold-header { font-size: 200px; font-weight: 900; color: #ff0054; text-shadow: 0 0 80px rgba(255,0,84,0.8); margin: 0; z-index: 5; animation: grow 0.5s ease-out; }
-        .sold-photo { width: 400px; height: 400px; border-radius: 40px; border: 12px solid #6fffe9; margin: 30px 0; object-fit: cover; z-index: 5; box-shadow: 0 0 50px rgba(111,255,233,0.5); }
-        .sold-msg { font-size: 70px; color: white; font-weight: 900; text-align: center; text-transform: uppercase; line-height: 1.1; z-index: 5; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes zoomIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
 
-        @keyframes blink { 50% { opacity: 0; } }
-        @keyframes grow { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        /* TICKER */
+        .ticker-wrap { position: fixed; bottom: 0; width: 100%; height: 60px; background: #ff0054; color: white; display: flex; align-items: center; z-index: 5; font-size: 24px; font-weight: bold; overflow: hidden; }
+        .ticker-content { white-space: nowrap; animation: ticker 60s linear infinite; padding-left: 100%; }
+        @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
     </style>
 </head>
 <body>
 
-    <div class="ticker-wrap">
-        <div class="ticker-label">LATEST UPDATES</div>
-        <div class="ticker-content" id="tickerItems">Waiting for auction data...</div>
-    </div>
-
-    <div id="soldCelebration">
-        <div class="global-watermark central-watermark" id="gdLogoBig"></div>
-        <p class="sold-header">SOLD</p>
-        <img id="soldPhoto" class="sold-photo" src="">
-        <div id="soldMsg" class="sold-msg"></div>
+    <div id="celebrationScreen">
+        <p id="statusText" class="status-header"></p>
+        <img id="celebPhoto" class="celeb-photo" src="">
+        <div id="celebMsg" class="celeb-msg"></div>
     </div>
 
     <div class="overlay-container" id="playerBox">
-        <div class="global-watermark box-watermark" id="gdLogoSmall"></div>
         <div class="p-photo-wrapper">
-            <img id="overPhoto" class="p-photo" src="https://via.placeholder.com/160?text=HPL">
+            <img id="overPhoto" class="p-photo" src="">
         </div>
         <div class="p-info">
             <h2 id="overName">WAITING...</h2>
-            <p id="overType">SEARCHING NEXT PLAYER</p>
+            <p id="overType">GAUTAM DIGITAL LIVE</p>
         </div>
     </div>
 
-    <div class="branding-box">
-        <div class="brand-name">GAUTAM DIGITAL</div>
-        <div class="brand-name" style="font-size: 22px; color: #6fffe9;">7999984007</div>
-        <div class="live-text"><span class="dot"></span> YOUTUBE LIVE</div>
+    <div class="ticker-wrap">
+        <div id="tickerItems" class="ticker-content">Syncing Auction Data...</div>
     </div>
 
 <script>
     const mainAPI = "https://script.google.com/macros/s/AKfycbx4OBlVp-XgSXJdt4S04PAJII4bJhxYnCU6_9O3QFdr75_0XnYmw4JG3XDQbE0S32jQ1w/exec";
-    const gdLogoLink = "https://lh3.googleusercontent.com/d/1Your_Logo_ID_Here"; // अपना लोगो ID यहाँ डालें
-
-    let lastSoldPlayerName = "";
-    let isShowingSold = false;
-
-    function applyWatermarks() {
-        document.getElementById('gdLogoBig').style.backgroundImage = `url(${gdLogoLink})`;
-        document.getElementById('gdLogoSmall').style.backgroundImage = `url(${gdLogoLink})`;
-    }
+    
+    let lastProcessedPlayer = ""; // प्लेयर का नाम
+    let lastProcessedStatus = ""; // प्लेयर का पिछला स्टेटस
+    let isAnimating = false;
 
     function getPhoto(link) {
-        if (!link || link === "NONE" || link === "") return "https://via.placeholder.com/160?text=HPL";
-        let id = "";
-        if (link.includes("id=")) { id = link.split("id=")[1].split("&")[0]; }
-        else if (link.includes("/d/")) { id = link.split("/d/")[1].split("/")[0]; }
+        if (!link || link === "NONE") return "https://via.placeholder.com/160?text=HPL";
+        let id = link.includes("id=") ? link.split("id=")[1].split("&")[0] : link.split("/d/")[1]?.split("/")[0];
         return id ? "https://lh3.googleusercontent.com/d/" + id : link;
     }
 
-    async function updateOverlay() {
-        if (isShowingSold) return; // एनीमेशन के दौरान अपडेट न करें
+    async function updateData() {
+        if (isAnimating) return;
 
         try {
             const t = new Date().getTime();
-            const [pRes, tRes] = await Promise.all([
-                fetch(mainAPI + "?action=players&t=" + t).then(r => r.json()),
-                fetch(mainAPI + "?action=teams&t=" + t).then(r => r.json())
-            ]);
-
-            // 1. SOLD LOGIC (चेक करें कि क्या कोई नया प्लेयर SOLD हुआ है)
-            const soldOnly = pRes.filter(p => p.status && p.status.toUpperCase() === "SOLD");
+            const response = await fetch(mainAPI + "?action=players&t=" + t);
+            const players = await response.json();
             
-            if (soldOnly.length > 0) {
-                const latestSold = soldOnly[soldOnly.length - 1]; // सबसे लेटेस्ट सोल्ड प्लेयर
-                
-                if (latestSold.name !== lastSoldPlayerName) {
-                    lastSoldPlayerName = latestSold.name;
-                    showSoldAnimation(latestSold);
+            // 1. Current Bidding Player (Status: Empty or AVAILABLE)
+            const currentPlayer = players.find(p => !p.status || p.status === "AVAILABLE" || p.status === "BIDDING");
+            
+            if (currentPlayer) {
+                document.getElementById("overName").innerText = currentPlayer.name.toUpperCase();
+                document.getElementById("overType").innerText = `${currentPlayer.type} | ${currentPlayer.address || 'SEONI'}`;
+                document.getElementById("overPhoto").src = getPhoto(currentPlayer.photo);
+            }
+
+            // 2. Logic for Animation (Check ALL players for a new SOLD/UNSOLD status)
+            // हम लिस्ट के अंत से चेक करते हैं ताकि सबसे नया एक्शन पकड़ा जाए
+            for (let i = players.length - 1; i >= 0; i--) {
+                const p = players[i];
+                const playerID = p.name + p.type;
+                const currentStatus = p.status ? p.status.toUpperCase() : "";
+
+                // अगर स्टेटस SOLD या UNSOLD है और यह पिछली बार से अलग है
+                if ((currentStatus === "SOLD" || currentStatus === "UNSOLD") && 
+                    (lastProcessedPlayer !== playerID || lastProcessedStatus !== currentStatus)) {
+                    
+                    lastProcessedPlayer = playerID;
+                    lastProcessedStatus = currentStatus;
+                    triggerAnimation(p, currentStatus);
+                    break; // एक बार में एक ही एनीमेशन
                 }
             }
 
-            // 2. NEWS TICKER
-            let tickerHTML = "";
-            soldOnly.slice(-5).reverse().forEach(s => {
-                tickerHTML += `<span class="ticker-item">🔥 SOLD: ${s.name.toUpperCase()} ➔ ${s.team} (₹${parseInt(s.price || 0).toLocaleString('en-IN')})</span>`;
-            });
-            tRes.forEach(team => {
-                tickerHTML += `<span class="ticker-item">💰 ${team.name}: ₹${(team.balance || 0).toLocaleString('en-IN')}</span>`;
-            });
-            document.getElementById("tickerItems").innerHTML = tickerHTML;
-
-            // 3. CURRENT BIDDING PLAYER
-            const available = pRes.filter(p => p.status === "AVAILABLE" || p.status === "BIDDING" || !p.status);
-            if (available.length > 0) {
-                const cp = available[0];
-                document.getElementById("overName").innerText = cp.name.toUpperCase();
-                document.getElementById("overType").innerText = (cp.type || "PLAYER") + " | " + (cp.address || "HPL SEONI");
-                document.getElementById("overPhoto").src = getPhoto(cp.photo);
-            }
-
-        } catch (e) { console.error("Sync Error"); }
+        } catch (e) { console.error("Data Sync Error"); }
     }
 
-    function showSoldAnimation(player) {
-        isShowingSold = true;
-        const celebDiv = document.getElementById("soldCelebration");
+    function triggerAnimation(player, status) {
+        isAnimating = true;
+        const screen = document.getElementById("celebrationScreen");
+        const statusText = document.getElementById("statusText");
+        const celebPhoto = document.getElementById("celebPhoto");
+        const celebMsg = document.getElementById("celebMsg");
+
+        celebPhoto.src = getPhoto(player.photo);
         
-        document.getElementById("soldPhoto").src = getPhoto(player.photo);
-        document.getElementById("soldMsg").innerHTML = `
-            ${player.name.toUpperCase()}<br>
-            <span style="color:#6fffe9; font-size:50px;">TEAM: ${player.team}</span><br>
-            <span style="color:#ffcc00; font-size:60px;">PRICE: ₹${parseInt(player.price || 0).toLocaleString('en-IN')}</span>
-        `;
+        if (status === "SOLD") {
+            screen.className = "sold-bg";
+            statusText.innerText = "SOLD";
+            statusText.style.color = "#ff0054";
+            celebMsg.innerHTML = `${player.name}<br><span style="color:#6fffe9">${player.team}</span><br>₹${parseInt(player.price).toLocaleString('en-IN')}`;
+            
+            confetti({ particleCount: 500, spread: 100, origin: { y: 0.6 }, colors: ['#ff0054', '#6fffe9', '#ffffff'] });
+        } else {
+            screen.className = "unsold-bg";
+            statusText.innerText = "UNSOLD";
+            statusText.style.color = "#ffffff";
+            celebMsg.innerHTML = `${player.name}<br><span style="color:#aaaaaa">BETTER LUCK NEXT TIME</span>`;
+        }
 
-        celebDiv.style.display = "flex";
+        screen.style.display = "flex";
 
-        // Confetti effect
-        confetti({
-            particleCount: 500,
-            spread: 150,
-            origin: { y: 0.6 },
-            zIndex: 100000
-        });
-
-        // 8 सेकंड तक एनीमेशन दिखाएँ
+        // 7 सेकंड बाद एनीमेशन हटा दें
         setTimeout(() => {
-            celebDiv.style.display = "none";
-            isShowingSold = false;
-        }, 8000);
+            screen.style.display = "none";
+            isAnimating = false;
+        }, 7000);
     }
 
-    applyWatermarks();
-    setInterval(updateOverlay, 3000);
-    updateOverlay();
+    setInterval(updateData, 3000);
+    updateData();
 </script>
 </body>
 </html>
