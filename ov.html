@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <title>Gautam Digital - Live Auction Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background: transparent; font-family: 'Segoe UI', Arial, sans-serif; width: 1920px; height: 1080px; }
+
+        /* --- CELEBRATION SCREEN (SOLD/UNSOLD) --- */
+        #celebrationScreen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 99999; transition: 0.5s;
+        }
+        .sold-bg { background: rgba(0, 0, 0, 0.98); border: 20px solid #ff0054; box-sizing: border-box; }
+        .unsold-bg { background: rgba(20, 20, 20, 0.98); border: 20px solid #555; box-sizing: border-box; }
+        
+        .status-header { font-size: 250px; font-weight: 900; margin: 0; line-height: 1; animation: bounceIn 0.8s cubic-bezier(0.36, 0, 0.66, -0.56) both; }
+        .celeb-photo { width: 450px; height: 450px; border-radius: 50%; border: 15px solid white; margin: 30px 0; object-fit: cover; box-shadow: 0 0 50px rgba(255,255,255,0.3); }
+        .celeb-msg { font-size: 80px; color: white; font-weight: 900; text-align: center; text-transform: uppercase; text-shadow: 2px 2px 10px rgba(0,0,0,0.5); }
+
+        /* --- LOWER THIRD (CURRENT PLAYER) --- */
+        .overlay-container {
+            position: absolute; bottom: 80px; left: 60px;
+            display: flex; align-items: center;
+            background: rgba(0,0,0,0.9); border-left: 10px solid #6fffe9;
+            padding: 15px 40px 15px 150px; width: 650px; height: 110px;
+            border-radius: 0 20px 20px 0; box-shadow: 10px 10px 30px rgba(0,0,0,0.5);
+        }
+        .p-photo-wrapper {
+            position: absolute; left: -30px; top: -30px;
+            width: 160px; height: 170px; border: 5px solid #6fffe9;
+            background: #111; overflow: hidden; border-radius: 15px;
+        }
+        .p-photo { width: 100%; height: 100%; object-fit: cover; }
+        .p-info h2 { margin: 0; color: #6fffe9; font-size: 40px; text-transform: uppercase; }
+        .p-info p { margin: 5px 0 0; color: white; font-size: 22px; font-weight: bold; opacity: 0.8; }
+
+        @keyframes bounceIn {
+            0% { opacity: 0; transform: scale(.3); }
+            50% { opacity: 1; transform: scale(1.05); }
+            70% { transform: scale(.9); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="celebrationScreen">
+        <p id="statusText" class="status-header"></p>
+        <img id="celebPhoto" class="celeb-photo" src="">
+        <div id="celebMsg" class="celeb-msg"></div>
+    </div>
+
+    <div class="overlay-container">
+        <div class="p-photo-wrapper">
+            <img id="overPhoto" class="p-photo" src="">
+        </div>
+        <div class="p-info">
+            <h2 id="overName">WAITING...</h2>
+            <p id="overType">GAUTAM DIGITAL LIVE</p>
+        </div>
+    </div>
+
+<script>
+    const mainAPI = "https://script.google.com/macros/s/AKfycbx4OBlVp-XgSXJdt4S04PAJII4bJhxYnCU6_9O3QFdr75_0XnYmw4JG3XDQbE0S32jQ1w/exec";
+    
+    let isAnimating = false;
+
+    // फोटो लिंक फिक्स करने के लिए
+    function getPhoto(link) {
+        if (!link || link === "NONE" || link === "") return "https://via.placeholder.com/200?text=NO+IMAGE";
+        let id = "";
+        if (link.includes("id=")) { id = link.split("id=")[1].split("&")[0]; }
+        else if (link.includes("/d/")) { id = link.split("/d/")[1].split("/")[0]; }
+        return id ? "https://lh3.googleusercontent.com/d/" + id : link;
+    }
+
+    async function updateData() {
+        if (isAnimating) return;
+
+        try {
+            const t = new Date().getTime();
+            const response = await fetch(mainAPI + "?action=players&t=" + t);
+            const players = await response.json();
+            
+            // 1. सबसे पहले Current Bidding Player दिखाओ (Status: Khali ya AVAILABLE)
+            const currentPlayer = players.find(p => !p.status || p.status.trim() === "" || p.status.toUpperCase() === "AVAILABLE" || p.status.toUpperCase() === "BIDDING");
+            
+            if (currentPlayer) {
+                document.getElementById("overName").innerText = currentPlayer.name.toUpperCase();
+                document.getElementById("overType").innerText = `${currentPlayer.type} | ${currentPlayer.address || 'HPL'}`;
+                document.getElementById("overPhoto").src = getPhoto(currentPlayer.photo);
+            }
+
+            // 2. एनीमेशन लॉजिक (Check for SOLD/UNSOLD)
+            // हम प्लेयर्स को पीछे से चेक करेंगे (Latest Action First)
+            for (let i = players.length - 1; i >= 0; i--) {
+                const p = players[i];
+                const status = p.status ? p.status.toUpperCase().trim() : "";
+                
+                if (status === "SOLD" || status === "UNSOLD") {
+                    // एक यूनिक आईडी बनाओ (Name + Team + Price + Status)
+                    const uniqueActionID = "ACT_" + p.name + "_" + status + "_" + (p.price || "0");
+                    
+                    // चेक करो क्या यह एक्शन पहले दिखाया जा चुका है?
+                    if (localStorage.getItem("lastAction") !== uniqueActionID) {
+                        
+                        // अगर पेज पहली बार लोड हो रहा है, तो एनीमेशन न दिखाएं (सिर्फ आईडी सेव करें)
+                        if (!localStorage.getItem("lastAction")) {
+                            localStorage.setItem("lastAction", uniqueActionID);
+                            continue; 
+                        }
+
+                        // नया एक्शन मिला! एनीमेशन ट्रिगर करें
+                        localStorage.setItem("lastAction", uniqueActionID);
+                        triggerAnimation(p, status);
+                        break; 
+                    } else {
+                        // अगर सबसे लेटेस्ट एक्शन पहले ही दिखाया जा चुका है, तो आगे चेक करने की जरूरत नहीं
+                        break;
+                    }
+                }
+            }
+
+        } catch (e) { console.error("Sync Error"); }
+    }
+
+    function triggerAnimation(player, status) {
+        isAnimating = true;
+        const screen = document.getElementById("celebrationScreen");
+        const statusText = document.getElementById("statusText");
+        const celebPhoto = document.getElementById("celebPhoto");
+        const celebMsg = document.getElementById("celebMsg");
+
+        celebPhoto.src = getPhoto(player.photo);
+        
+        if (status === "SOLD") {
+            screen.className = "sold-bg";
+            statusText.innerText = "SOLD";
+            statusText.style.color = "#ff0054";
+            celebMsg.innerHTML = `<span style="color:white">${player.name}</span><br><span style="color:#6fffe9">${player.team}</span><br><span style="color:#ffcc00">₹${parseInt(player.price).toLocaleString('en-IN')}</span>`;
+            
+            // पटाखा इफेक्ट
+            confetti({ particleCount: 500, spread: 150, origin: { y: 0.6 }, zIndex: 100000 });
+        } else {
+            screen.className = "unsold-bg";
+            statusText.innerText = "UNSOLD";
+            statusText.style.color = "#ffffff";
+            celebMsg.innerHTML = `<span style="color:white">${player.name}</span><br><span style="color:#aaaaaa; font-size:40px;">UNSOLD PLAYER</span>`;
+        }
+
+        screen.style.display = "flex";
+
+        // 8 सेकंड तक एनीमेशन दिखाओ
+        setTimeout(() => {
+            screen.style.display = "none";
+            isAnimating = false;
+        }, 8000);
+    }
+
+    // पेज लोड होते ही लोकल स्टोरेज साफ करें ताकि नया ऑक्शन फ्रेश शुरू हो (Optional)
+    // window.onload = () => { localStorage.removeItem("lastAction"); };
+
+    setInterval(updateData, 3000);
+    updateData();
+</script>
+</body>
+</html>
